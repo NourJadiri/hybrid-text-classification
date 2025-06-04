@@ -36,4 +36,31 @@ def load_all_annotations_to_df(base_path = 'data', lang_folders = ['BG', 'EN', '
         print("No data frames were created. Please check the file paths and contents.")
         return pd.DataFrame(columns=['id', 'narratives', 'subnarratives', 'language'])
 
-    
+
+def load_ids_to_df(annotations_df, label_to_id):
+    annotations_df['narrative_ids'] = annotations_df['narratives'].apply(lambda x: [label_to_id.get(n, -1) for n in x])
+    annotations_df['subnarrative_ids'] = annotations_df['subnarratives'].apply(lambda x: [label_to_id.get(sn, -1) for sn in x])
+    #make the ids unique
+    annotations_df['narrative_ids'] = annotations_df['narrative_ids'].apply(lambda x: list(set(x)))
+    annotations_df['subnarrative_ids'] = annotations_df['subnarrative_ids'].apply(lambda x: list(set(x)))
+    return annotations_df[['id', 'text', 'narratives', 'subnarratives', 'narrative_ids', 'subnarrative_ids', 'language']]
+
+if __name__ == "__main__":
+    from label_parser import parse_json_for_narratives_subnarratives, create_label_mappings
+    import os
+
+    # Path to taxonomy JSON
+    taxonomy_path = os.path.join('data', 'taxonomy.json')
+    narratives, subnarratives = parse_json_for_narratives_subnarratives(taxonomy_path)
+    label_to_id, id_to_label, narrative_to_subnarrative_ids = create_label_mappings(narratives, subnarratives)
+
+    # Load annotations DataFrame
+    df = load_all_annotations_to_df()
+    print("Loaded annotations DataFrame:")
+    print(df.head())
+
+    # Map labels to IDs
+    df_with_ids = load_ids_to_df(df, label_to_id)
+    print("\nDataFrame with narrative and subnarrative IDs:")
+    print(df_with_ids.head())
+

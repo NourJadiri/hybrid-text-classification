@@ -25,6 +25,7 @@ def parse_json_for_narratives_subnarratives(json_file_path: str):
             # Form the narrative string (L1:L2)
             narrative_str = f"{l1_key}: {l2_key}"
             narratives.add(narrative_str)
+            narratives.add(f"Other")
 
             # Check if L2_value is a list (expected for L3 items)
             if isinstance(l2_value, list):
