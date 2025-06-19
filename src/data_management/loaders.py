@@ -1,4 +1,6 @@
+import numpy as np
 import pandas as pd
+import torch
 
 def read_text_file(article_id, lang, base_path = 'data'):
     file_path = f"{base_path}/{lang}/raw-documents/{article_id}"
@@ -44,6 +46,20 @@ def load_ids_to_df(annotations_df, label_to_id):
     annotations_df['narrative_ids'] = annotations_df['narrative_ids'].apply(lambda x: list(set(x)))
     annotations_df['subnarrative_ids'] = annotations_df['subnarrative_ids'].apply(lambda x: list(set(x)))
     return annotations_df[['id', 'text', 'narratives', 'subnarratives', 'narrative_ids', 'subnarrative_ids', 'language']]
+
+def load_tokenized_df(dataframe ,base_path = 'data/processed'):
+    df = pd.read_parquet(f'{base_path}/{dataframe}')
+    df['input_ids_pt'] = df['input_ids_list'].apply(lambda x: torch.tensor(x, dtype=torch.long)) # type: ignore
+    df['attention_mask_pt'] = df['attention_mask_list'].apply(lambda x: torch.tensor(x, dtype=torch.long)) # type: ignore
+    df['labels_pt'] = df['labels'].apply(lambda x: torch.tensor(x, dtype=torch.float)) # type: ignore
+    
+    return df
+
+def load_labeled_df(dataframe, base_path = 'data/processed'):
+    df = pd.read_parquet(f'{base_path}/{dataframe}')
+    df['narrative_ids'] = df['narrative_ids'].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)
+    df['subnarrative_ids'] = df['subnarrative_ids'].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)
+    return df
 
 if __name__ == "__main__":
     from label_parser import parse_json_for_narratives_subnarratives, create_label_mappings
