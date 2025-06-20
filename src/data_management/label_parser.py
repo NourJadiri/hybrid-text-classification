@@ -87,6 +87,22 @@ def create_label_mappings(narratives: list, subnarratives: list):
 
     return label_to_id, id_to_label, narrative_to_subnarrative_ids
 
+def get_label_mappings(json_file_path: str = "data/taxonomy.json"):
+    """
+    Parses the JSON file and creates label mappings for narratives and subnarratives.
+
+    Args:
+        json_file_path (str): Path to the JSON file containing the taxonomy.
+
+    Returns:
+        tuple: (label_to_id, id_to_label, narrative_to_subnarrative_ids)
+            - label_to_id: dict mapping label string to unique integer ID
+            - id_to_label: dict mapping unique integer ID to label string
+            - narrative_to_subnarrative_ids: dict mapping narrative string to list of subnarrative IDs
+    """
+    narratives, subnarratives = parse_json_for_narratives_subnarratives(json_file_path)
+    return create_label_mappings(narratives, subnarratives)
+
 if __name__ == "__main__":
     json_file_path = "data/taxonomy.json"  # Replace with your actual JSON file path
     narratives, subnarratives = parse_json_for_narratives_subnarratives(json_file_path)
