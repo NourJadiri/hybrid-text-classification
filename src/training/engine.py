@@ -1,4 +1,3 @@
-
 import torch
 from tqdm.auto import tqdm
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -117,3 +116,28 @@ def compute_metrics(all_preds_logits, all_true_labels, parent_child_pairs, thres
         "f1_macro": f1_macro
     }
     return metrics
+
+def get_raw_predictions(model, dataloader, device):
+    """
+    Runs the model on a dataset and returns its raw logits and the true labels.
+    This is used to get the data needed for threshold finding.
+    """
+    
+    model.eval()
+
+    all_logits = []
+    all_labels = []
+    
+    with torch.no_grad():
+        for batch in tqdm(dataloader, desc="Getting Raw Predictions"):
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            labels = batch['labels'].to(device)
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            all_logits.append(outputs.logits.cpu().numpy())
+            all_labels.append(labels.cpu().numpy())
+    
+    all_logits = np.concatenate(all_logits, axis=0)
+    all_labels = np.concatenate(all_labels, axis=0)
+    
+    return all_logits, all_labels
