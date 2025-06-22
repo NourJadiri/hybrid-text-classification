@@ -103,6 +103,7 @@ def prepare_datasets(data_folder, model_name='xlm-roberta-base', max_length=512,
         test_dataset,
         tokenizer,
         id_to_label,
+        label_to_id,
         parent_child_pairs,
         num_total_labels,
     )

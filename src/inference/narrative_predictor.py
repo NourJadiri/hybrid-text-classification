@@ -37,6 +37,14 @@ class NarrativePredictor:
         self.label2id = label_maps['label2id']
         self.id2label = label_maps['id2label']
 
+        # Separate indices for narratives and sub-narratives for thresholding
+        self.narrative_indices = [
+            i for i, label in self.id2label.items() if label.count(':') == 1
+        ]
+        self.subnarrative_indices = [
+            i for i, label in self.id2label.items() if label.count(':') == 2
+        ]
+
         self.model = AutoModelForSequenceClassification.from_pretrained(
             tokenizer_name,
             num_labels=len(self.label2id),
@@ -51,20 +59,30 @@ class NarrativePredictor:
         self.model.eval() # Set model to evaluation mode permanently
 
         self.parent_child_pairs = label_maps['parent_child_pairs']
-        self.threshold = 0.5 # Default threshold, can be updated
+        self.narrative_threshold = 0.5 # Default threshold
+        self.subnarrative_threshold = 0.5 # Default threshold
         print("Predictor initialized and ready.")
         
     
-    def set_threshold(self, threshold):
+    def set_thresholds(self, narrative_threshold, subnarrative_threshold):
         """
-        Set the threshold for binary classification.
+        Set the thresholds for narrative and sub-narrative predictions.
         """
-        self.threshold = threshold
-        print(f"Threshold set to: {self.threshold}")
+        self.narrative_threshold = narrative_threshold
+        self.subnarrative_threshold = subnarrative_threshold
+        print(f"Narrative threshold set to: {self.narrative_threshold:.2f}")
+        print(f"Sub-narrative threshold set to: {self.subnarrative_threshold:.2f}")
         
     def _process_predictions(self, probabilities):
         """Converts probabilities to binary predictions and applies hierarchical correction."""
-        binary_preds = (probabilities > self.threshold).astype(int)
+        binary_preds = np.zeros_like(probabilities, dtype=int)
+
+        # Apply separate thresholds for narratives and sub-narratives
+        narr_probs = probabilities[:, self.narrative_indices]
+        binary_preds[:, self.narrative_indices] = (narr_probs > self.narrative_threshold).astype(int)
+
+        subnarr_probs = probabilities[:, self.subnarrative_indices]
+        binary_preds[:, self.subnarrative_indices] = (subnarr_probs > self.subnarrative_threshold).astype(int)
         
         # Apply hierarchical correction
         for sub_id, narr_id in self.parent_child_pairs:
