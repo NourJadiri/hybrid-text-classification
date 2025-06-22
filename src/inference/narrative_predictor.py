@@ -104,7 +104,7 @@ class NarrativePredictor:
         results = self.predict_batch([text])
         return results[0] # Return the results for the single text
     
-    def predict_batch(self, texts: list):
+    def predict_batch(self, texts: list, file_path=None):
         """
         Predicts narratives for a batch of texts.
         """
@@ -141,12 +141,31 @@ class NarrativePredictor:
                 elif label_str.count(':') == 2:
                     subnarratives.append(label_str)
             
-            ### NEW: Apply the final correction logic here
+            # Apply the final correction logic here
             final_narratives, final_subnarratives = self._apply_final_correction(narratives, subnarratives)
+
+            # If both are empty, put 'Other' in both
+            if not final_narratives and not final_subnarratives:
+                final_narratives = ['Other']
+                final_subnarratives = ['Other']
             
             results.append({
                 "narratives": sorted(final_narratives),
                 "subnarratives": sorted(final_subnarratives)
             })
+        if file_path:
+            self._save_prediction_to_file(results, file_path)
+            print(f"Predictions saved to {file_path}")
             
         return results
+    
+    def _save_prediction_to_file(self, predictions, file_path):
+        """
+        Saves the predictions to a CSV file.
+        """
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write("narratives;subnarratives\n")
+            for pred in predictions:
+                narratives_str = ";".join(pred.get("narratives", []))
+                subnarratives_str = ";".join(pred.get("subnarratives", []))
+                f.write(f"{narratives_str};{subnarratives_str}\n")

@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-def read_text_file(article_id, lang, base_path = 'data'):
-    file_path = f"{base_path}/{lang}/raw-documents/{article_id}"
+def read_text_file(article_id, lang, base_path = 'data', docs_folder='raw-documents'):
+    file_path = f"{base_path}/{lang}/{docs_folder}/{article_id}"
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             return f.read()
@@ -12,7 +12,7 @@ def read_text_file(article_id, lang, base_path = 'data'):
         return None
 
 
-def load_all_annotations_to_df(base_path = 'data', lang_folders = ['BG', 'EN', 'HI', 'PT', 'RU'], annotation_file_name = 'subtask-2-annotations.txt'):
+def load_all_annotations_to_df(base_path = 'data', lang_folders = ['BG', 'EN', 'HI', 'PT', 'RU'], annotation_file_name = 'subtask-2-annotations.txt', docs_folder='raw-documents'):
     all_dfs = []
     for lang in lang_folders:
         file_path = f"{base_path}/{lang}/{annotation_file_name}"
@@ -21,7 +21,7 @@ def load_all_annotations_to_df(base_path = 'data', lang_folders = ['BG', 'EN', '
             df['narratives'] = df['narratives'].apply(lambda x: x.split(';') if isinstance(x, str) else [])
             df['subnarratives'] = df['subnarratives'].apply(lambda x: x.split(';') if isinstance(x, str) else [])
             df['language'] = lang
-            df['text'] = df['id'].apply(lambda x: read_text_file(x, lang, base_path))
+            df['text'] = df['id'].apply(lambda x: read_text_file(x, lang, base_path, docs_folder=docs_folder))
             df = df[['id', 'text', 'narratives', 'subnarratives', 'language']]
             all_dfs.append(df)
         except FileNotFoundError:
