@@ -66,7 +66,7 @@ def create_narrative_generator_chain():
 
     **Crucial Constraints for EACH text:**
     1.  **Style:** Each text must be in a formal, journalistic style appropriate to its persona.
-    2.  **Structure:** Each text must be at least two paragraphs long. Each paragraph should be at least 5 sentences long.
+    2.  **Structure:** Each text must be between 300 and 500 words long.
     3.  **Precision:** Each text MUST clearly exemplify the target narrative.
     4.  **Factual Integrity:** DO NOT invent specific, verifiable details (names, dates, stats), if possible use them actually.
 
@@ -124,7 +124,7 @@ def create_subnarrative_generator_chain():
 
     **Crucial Constraints for EACH text:**
     1.  **Style:** Each text must be in a formal, journalistic style appropriate to its persona.
-    2.  **Structure:** Each text must be at least two paragraphs long. each paragraph should be at least 5 sentences long.
+    2.  **Structure:** Each text must be between 300 and 500 words long.
     3.  **Precision:** Each text MUST clearly exemplify the target narrative.
     4.  **Factual Integrity:** DO NOT invent specific, verifiable details (names, dates, stats), if possible use them actually.
 
