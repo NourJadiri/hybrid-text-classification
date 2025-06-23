@@ -9,36 +9,23 @@ from src.data_management.label_parser import parse_json_for_narratives_subnarrat
 from src.data_management.preprocessor import binarize_labels
 from src.data_management.datasets import NarrativeClassificationDataset
 
-def prepare_datasets(data_folder, model_name='xlm-roberta-base', max_length=512, docs_folder='raw-documents'):
+def prepare_dataframes(data_folder, docs_folder='raw-documents'):
     """
-    Loads, preprocesses, and splits the data for training.
-
-    This function encapsulates the steps from the data loading and preprocessing notebooks:
-    1. Loads annotations from the specified data folder.
-    2. Parses the taxonomy to create label mappings.
-    3. Maps textual labels to integer IDs.
-    4. Creates binarized label vectors.
-    5. Splits the data into training, validation, and test sets using iterative stratification.
-    6. Creates PyTorch-compatible datasets for each split.
+    Loads and preprocesses data into train, validation, and test DataFrames.
 
     Args:
         data_folder (str): Path to the root data folder (e.g., 'data').
-        model_name (str, optional): Name of the transformer model to use for tokenization. 
-                                    Defaults to 'xlm-roberta-base'.
-        max_length (int, optional): Maximum sequence length for tokenization. Defaults to 512.
         docs_folder (str, optional): Name of the folder containing the raw documents. Defaults to 'raw-documents'.
 
     Returns:
         tuple: A tuple containing:
-            - train_dataset (NarrativeClassificationDataset): The training dataset.
-            - val_dataset (NarrativeClassificationDataset): The validation dataset.
-            - test_dataset (NarrativeClassificationDataset): The test dataset.
-            - tokenizer (AutoTokenizer): The tokenizer instance.
+            - train_df (DataFrame): The training data.
+            - val_df (DataFrame): The validation data.
+            - test_df (DataFrame): The test data.
             - id_to_label (dict): Mapping from label ID to label string.
+            - label_to_id (dict): Mapping from label string to label ID.
             - parent_child_pairs (list): A list of tuples mapping subnarrative IDs to narrative IDs.
-            - num_total_labels (int): The total number of unique labels.
     """
-    
     # --- 1. Load Annotations and Taxonomy ---
     print("Loading annotations and taxonomy...")
     taxonomy_path = os.path.join(data_folder, 'taxonomy.json')
@@ -50,7 +37,6 @@ def prepare_datasets(data_folder, model_name='xlm-roberta-base', max_length=512,
     narratives, subnarratives = parse_json_for_narratives_subnarratives(taxonomy_path)
     label_to_id, id_to_label, narrative_to_subnarrative_ids = create_label_mappings(narratives, subnarratives)
     all_ids = list(id_to_label.keys())
-    num_total_labels = len(all_ids)
 
     # --- 2. Map Labels to IDs and Binarize ---
     print("Mapping labels to IDs and creating binarized vectors...")
@@ -86,6 +72,52 @@ def prepare_datasets(data_folder, model_name='xlm-roberta-base', max_length=512,
     # --- 4. Prepare Hierarchical Training Parameters ---
     sub_to_narr_id_map = {sub_id: narr_id for narr_id, sub_ids in narrative_to_subnarrative_ids.items() for sub_id in sub_ids}
     parent_child_pairs = list(sub_to_narr_id_map.items())
+    
+    return (
+        train_df,
+        val_df,
+        test_df,
+        id_to_label,
+        label_to_id,
+        parent_child_pairs
+    )
+
+
+def prepare_datasets(data_folder, model_name='xlm-roberta-base', max_length=512, docs_folder='raw-documents'):
+    """
+    Loads, preprocesses, and splits the data for training.
+
+    This function encapsulates the steps from the data loading and preprocessing notebooks:
+    1. Loads annotations from the specified data folder.
+    2. Parses the taxonomy to create label mappings.
+    3. Maps textual labels to integer IDs.
+    4. Creates binarized label vectors.
+    5. Splits the data into training, validation, and test sets using iterative stratification.
+    6. Creates PyTorch-compatible datasets for each split.
+
+    Args:
+        data_folder (str): Path to the root data folder (e.g., 'data').
+        model_name (str, optional): Name of the transformer model to use for tokenization. 
+                                    Defaults to 'xlm-roberta-base'.
+        max_length (int, optional): Maximum sequence length for tokenization. Defaults to 512.
+        docs_folder (str, optional): Name of the folder containing the raw documents. Defaults to 'raw-documents'.
+
+    Returns:
+        tuple: A tuple containing:
+            - train_dataset (NarrativeClassificationDataset): The training dataset.
+            - val_dataset (NarrativeClassificationDataset): The validation dataset.
+            - test_dataset (NarrativeClassificationDataset): The test dataset.
+            - tokenizer (AutoTokenizer): The tokenizer instance.
+            - id_to_label (dict): Mapping from label ID to label string.
+            - parent_child_pairs (list): A list of tuples mapping subnarrative IDs to narrative IDs.
+            - num_total_labels (int): The total number of unique labels.
+    """
+    
+    train_df, val_df, test_df, id_to_label, label_to_id, parent_child_pairs = prepare_dataframes(
+        data_folder, docs_folder
+    )
+    
+    num_total_labels = len(id_to_label)
 
     # --- 5. Create Tokenizer and PyTorch Datasets ---
     print(f"Loading tokenizer ('{model_name}') and creating PyTorch datasets...")
@@ -107,3 +139,5 @@ def prepare_datasets(data_folder, model_name='xlm-roberta-base', max_length=512,
         parent_child_pairs,
         num_total_labels,
     )
+
+
