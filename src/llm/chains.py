@@ -9,7 +9,7 @@ if not os.environ.get("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter your OpenAI API key: ")
 
 llm = ChatOpenAI(
-    model="gpt-4.1-mini",
+    model="gpt-4.1",
     timeout=None,
     max_retries=2,
 )
@@ -21,10 +21,9 @@ class Article(BaseModel):
     
     
 class GeneratedArticleBatch(BaseModel):
-    """A Pydantic model for a batch of generated articles."""
     # conlist ensures we get a list of at least 8 distinct articles
-    articles: conlist(Article, min_length=8) = Field(description="A list of generated articles, each from a different perspective.")
-    
+    articles: list[Article] = Field(description="A list of generated articles, each from a different perspective.")
+
 
 def create_narrative_generator_chain():
     """
@@ -54,7 +53,7 @@ def create_narrative_generator_chain():
     **Your Task:**
     Generate a batch of **{num_examples} distinct and diverse texts** that all exemplify the narrative above. To ensure diversity, write each text from a **different persona or perspective**.
 
-    Here are some example personas to adopt for each text:
+    Here are some example personas to adopt for each text (You are not limited to these, feel free to create your own):
     - A skeptical financial journalist focusing on economic angles.
     - An optimistic technologist writing for a tech publication.
     - A concerned environmental scientist from a research institute.
@@ -66,10 +65,10 @@ def create_narrative_generator_chain():
 
     **Crucial Constraints for EACH text:**
     1.  **Style:** Each text must be in a formal, journalistic style appropriate to its persona.
-    2.  **Structure:** Each text must be between 300 and 500 words long.
+    2.  **Structure:** Each text must be between 300 and 500 words long. The length of articles is important to ensure they are substantial enough to convey the narrative effectively.
     3.  **Precision:** Each text MUST clearly exemplify the target narrative.
     4.  **Factual Integrity:** DO NOT invent specific, verifiable details (names, dates, stats), if possible use them actually.
-
+    5.  **Diversity:** Ensure each text is distinct in perspective, tone, and focus.
     **Format Instructions:**
     {format_instructions}
     """
@@ -112,7 +111,7 @@ def create_subnarrative_generator_chain():
     Generate a batch of **{num_examples} distinct and diverse texts** that all exemplify the narrative above. To ensure diversity, write each text from a **different persona or perspective**.
 
     
-    Here are some example personas to adopt for each text:
+    Here are some example personas to adopt for each text (You are not limited to these, feel free to create your own):
     - A skeptical financial journalist focusing on economic angles.
     - An optimistic technologist writing for a tech publication.
     - A concerned environmental scientist from a research institute.
@@ -124,9 +123,10 @@ def create_subnarrative_generator_chain():
 
     **Crucial Constraints for EACH text:**
     1.  **Style:** Each text must be in a formal, journalistic style appropriate to its persona.
-    2.  **Structure:** Each text must be between 300 and 500 words long.
+    2.  **Structure:** Each text must be between 300 and 500 words long. The length of articles is important to ensure they are substantial enough to convey the narrative effectively.
     3.  **Precision:** Each text MUST clearly exemplify the target narrative.
     4.  **Factual Integrity:** DO NOT invent specific, verifiable details (names, dates, stats), if possible use them actually.
+    5.  **Diversity:** Ensure each text is distinct in perspective, tone, and focus.
 
     **Format Instructions:**
     {format_instructions}
