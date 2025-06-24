@@ -4,3 +4,5 @@ devset/
 testset/
 
 **/__pycache__/
+
+.env*
