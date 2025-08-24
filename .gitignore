@@ -2,7 +2,9 @@
 data/
 devset/
 testset/
+models/
 
 **/__pycache__/
 
 .env*
+.venv/

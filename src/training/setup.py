@@ -1,40 +1,48 @@
-
 import torch
 from transformers.optimization import get_linear_schedule_with_warmup
 
-def init_model_and_tokenizer(model_name, device, num_total_labels, id_to_label, label_to_id):
+def load_model_and_tokenizer(model_name, device, num_total_labels, id_to_label, label_to_id, state_dict_path=None):
     """
-    Initializes the model and tokenizer for the given model name.
-    
+    Initializes or loads a model and tokenizer.
+
+    If a state_dict_path is provided, it loads the model weights.
+    Otherwise, it initializes a new model from the pre-trained model name.
+
     Args:
         model_name (str): The name of the pre-trained model.
-        device (torch.device): The device to load the model onto (CPU or GPU).
-        
+        device (torch.device): The device to load the model onto.
+        num_total_labels (int): Number of labels for classification.
+        id_to_label (dict): Mapping from id to label.
+        label_to_id (dict): Mapping from label to id.
+        state_dict_path (str, optional): Path to the saved state dict. Defaults to None.
+
     Returns:
-        model: The initialized model.
-        tokenizer: The initialized tokenizer.
+        model: The loaded or initialized model.
+        tokenizer: The loaded tokenizer.
     """
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
-    
-    # Load the tokenizer
+
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    
-    # Load the model
     model = AutoModelForSequenceClassification.from_pretrained(
         model_name,
-        num_labels = num_total_labels,
-        problem_type = 'multi_label_classification',
-        id2label = id_to_label,
-        label2id = label_to_id 
+        num_labels=num_total_labels,
+        problem_type='multi_label_classification',
+        id2label=id_to_label,
+        label2id=label_to_id
     )
 
-    print("Model and tokenizer loaded successfully.")
-    
-    # Move the model to the specified device
-    model.to(device)
-    
-    return model, tokenizer
+    if state_dict_path:
+        try:
+            state_dict = torch.load(state_dict_path, map_location=device)
+            model.load_state_dict(state_dict)
+            print(f"Model loaded from state dict at {state_dict_path} and tokenizer loaded successfully.")
+        except FileNotFoundError:
+            print(f"Warning: State dict not found at {state_dict_path}. Initializing a new model.")
+    else:
+        print("Initialized new model and tokenizer successfully.")
 
+    model.to(device)
+    return model, tokenizer
 
 def setup_optimizer_and_scheduler(model, train_dataloader, epochs, learning_rate=2e-5):
     from torch.optim import AdamW
