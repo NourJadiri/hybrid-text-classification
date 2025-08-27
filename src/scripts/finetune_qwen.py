@@ -45,7 +45,6 @@ def format_dataset(df, tokenizer, use_comprehensive=True):
         user_content = prompt_template.format(text=row['text'])
         
         messages = [
-            {"role": "system", "content": "/no_think"},
             {"role": "user", "content": user_content},
             {"role": "assistant", "content": f"[{row['narratives_str']}]"},
         ]
@@ -172,7 +171,6 @@ def main(args):
     user_content = prompt_template.format(text=test_text)
     
     messages = [
-        {"role": "system", "content": "/no_think"},
         {"role": "user", "content": user_content},
     ]
     
@@ -207,7 +205,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_simple_prompt", action="store_true", help="Use simple prompt template instead of comprehensive one.")
 
     # LoRA arguments
-    parser.add_argument("--lora_r", type=int, default=16, help="LoRA attention dimension (r).")
+    parser.add_argument("--lora_r", type=int, default=8, help="LoRA attention dimension (r).")
     parser.add_argument("--lora_alpha", type=int, default=32, help="LoRA alpha parameter.")
     
     # Training arguments
