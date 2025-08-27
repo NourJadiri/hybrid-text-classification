@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch
+import os
 
 def read_text_file(article_id, lang, base_path = 'data', docs_folder='raw-documents'):
     file_path = f"{base_path}/{lang}/{docs_folder}/{article_id}"
@@ -47,8 +48,23 @@ def load_ids_to_df(annotations_df, label_to_id):
     annotations_df['subnarrative_ids'] = annotations_df['subnarrative_ids'].apply(lambda x: list(set(x)))
     return annotations_df[['id', 'text', 'narratives', 'subnarratives', 'narrative_ids', 'subnarrative_ids', 'language']]
 
-def load_tokenized_df(dataframe ,base_path = 'data/processed'):
-    df = pd.read_parquet(f'{base_path}/{dataframe}')
+def _resolve_path(dataframe, base_path):
+    """Resolve a dataframe path: if `dataframe` already points to an existing file or is absolute,
+    return it as-is; otherwise join it with `base_path`.
+    This makes callers resilient to passing either 'phase0.parquet' or 'data/processed/phase0.parquet'.
+    """
+    # If it's an absolute path or already exists relative to cwd, use it directly
+    if os.path.isabs(dataframe) or os.path.exists(dataframe):
+        return dataframe
+
+    # Otherwise try joining with base_path
+    candidate = os.path.join(base_path, dataframe)
+    return candidate
+
+
+def load_tokenized_df(dataframe, base_path = 'data/processed'):
+    path = _resolve_path(dataframe, base_path)
+    df = pd.read_parquet(path)
     df['input_ids_pt'] = df['input_ids_list'].apply(lambda x: torch.tensor(x, dtype=torch.long)) # type: ignore
     df['attention_mask_pt'] = df['attention_mask_list'].apply(lambda x: torch.tensor(x, dtype=torch.long)) # type: ignore
     df['labels_pt'] = df['labels'].apply(lambda x: torch.tensor(x, dtype=torch.float)) # type: ignore
@@ -56,7 +72,8 @@ def load_tokenized_df(dataframe ,base_path = 'data/processed'):
     return df
 
 def load_labeled_df(dataframe, base_path = 'data/processed'):
-    df = pd.read_parquet(f'{base_path}/{dataframe}')
+    path = _resolve_path(dataframe, base_path)
+    df = pd.read_parquet(path)
     df['narrative_ids'] = df['narrative_ids'].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)
     df['subnarrative_ids'] = df['subnarrative_ids'].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)
     return df
