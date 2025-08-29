@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import pandas as pd
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 import torch
@@ -16,6 +17,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data_management.loaders import load_labeled_df
 from utils.prompt_template import create_comprehensive_prompt_template, create_simple_prompt_template
+from utils.balanced_sampling import create_balanced_multilabel_sample, analyze_class_distribution
 
 def format_dataset(df, tokenizer, use_comprehensive=True):
     """
@@ -127,10 +129,23 @@ def main(args):
     
     print("\n--- Step 3: Loading and Preparing Dataset ---")
     
-    full_df = load_labeled_df(args.dataset_path)
-    narratives_df = full_df[["text", "narratives"]].dropna().reset_index(drop=True)
+    # Check if this is a balanced sample (only has text and narratives columns)
+    try:
+        test_df = pd.read_parquet(args.dataset_path)
+        if list(test_df.columns) == ['text', 'narratives']:
+            print("Detected balanced sample dataset - loading directly")
+            narratives_df = test_df.copy()
+        else:
+            print("Loading full labeled dataset")
+            full_df = load_labeled_df(args.dataset_path)
+            narratives_df = full_df[["text", "narratives"]].dropna().reset_index(drop=True)
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        print("Attempting to load as full labeled dataset")
+        full_df = load_labeled_df(args.dataset_path)
+        narratives_df = full_df[["text", "narratives"]].dropna().reset_index(drop=True)
     
-    if args.num_samples:
+    if args.num_samples and len(narratives_df) > args.num_samples:
         print(f"--- Using a subset of {args.num_samples} samples for quick testing ---")
         narratives_df = narratives_df.head(args.num_samples)
     
@@ -200,10 +215,19 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, default="unsloth/Qwen3-4B-Instruct-2507-unsloth-bnb-4bit", help="The model name to use from Hugging Face.")
     parser.add_argument("--dataset_path", type=str, default="data/processed/phase0_baseline_labeled.parquet", help="Path to the labeled parquet dataset.")
     parser.add_argument("--output_dir", type=str, default="models/qwen-finetuned", help="Directory to save the fine-tuned model.")
-    parser.add_argument("--max_seq_length", type=int, default=1024, help="Maximum sequence length for the model.")
+    parser.add_argument("--max_seq_length", type=int, default=2048, help="Maximum sequence length for the model.")
     parser.add_argument("--chat_template", type=str, default="qwen3-instruct", help="The chat template to use ('qwen2', 'chatml', etc.).")
     parser.add_argument("--use_simple_prompt", action="store_true", help="Use simple prompt template instead of comprehensive one.")
 
+    parser.add_argument("--use_balanced_sampling", action="store_true",
+                        help="Use balanced sampling to minimize 'Other' class and maximize class diversity.")
+    parser.add_argument("--balanced_sample_size", type=int, default=1000,
+                        help="Target size for balanced sample when using balanced sampling.")
+    parser.add_argument("--max_other_percentage", type=float, default=0.15,
+                        help="Maximum percentage of 'Other' class in balanced sample (0.0-1.0).")
+    parser.add_argument("--min_samples_per_class", type=int, default=5,
+                        help="Minimum samples per class in balanced sample.")
+    
     # LoRA arguments
     parser.add_argument("--lora_r", type=int, default=8, help="LoRA attention dimension (r).")
     parser.add_argument("--lora_alpha", type=int, default=32, help="LoRA alpha parameter.")
