@@ -13,7 +13,7 @@ from unsloth.chat_templates import get_chat_template
 import torch
 from utils.prompt_template import create_comprehensive_prompt_template, create_simple_prompt_template
 
-def load_model(model_path, base_model, max_seq_length=1024, chat_template="qwen3-instruct"):
+def load_model(model_path, base_model, max_seq_length=4096, chat_template="qwen3-instruct"):
     """Load the finetuned model and tokenizer."""
     print(f"Loading model from: {model_path}")
     
@@ -121,6 +121,8 @@ def main():
                         help="Base model name.")
     parser.add_argument("--use_simple_prompt", action="store_true",
                         help="Use simple prompt template.")
+    parser.add_argument("--max_seq_length", type=int, default=4096,
+                    help="The maximum sequence length of the model.")
     
     args = parser.parse_args()
     
@@ -131,7 +133,7 @@ def main():
     print("-"*60)
     
     # Load model
-    model, tokenizer = load_model(args.model_path, args.base_model)
+    model, tokenizer = load_model(args.model_path, args.base_model, max_seq_length=args.max_seq_length)
     
     # Get prediction
     raw_response = predict_narratives(args.text, model, tokenizer, args.use_simple_prompt)

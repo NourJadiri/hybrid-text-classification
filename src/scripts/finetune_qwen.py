@@ -60,22 +60,31 @@ def format_dataset(df, tokenizer, use_comprehensive=True):
 
 def create_trainer(model, train_dataset, eval_dataset, args):
     
-    training_args = SFTConfig(
-        dataset_text_field = "text",
-        per_device_train_batch_size = args.per_device_train_batch_size,
-        gradient_accumulation_steps = args.gradient_accumulation_steps, # Use GA to mimic batch size!
-        warmup_steps = args.warmup_steps,
-        # num_train_epochs = 1, # Set this for 1 full training run.
-        max_steps = args.max_steps,
-        learning_rate = args.learning_rate,
-        logging_steps = 5,
-        optim = args.optim,
-        weight_decay = 0.01,
-        lr_scheduler_type = "linear",
-        seed = args.seed,
-        report_to = "none", # Use this for WandB etc
-        load_best_model_at_end=True,
-    )
+    # Determine whether to use epochs or steps
+    training_config = {
+        "dataset_text_field": "text",
+        "per_device_train_batch_size": args.per_device_train_batch_size,
+        "gradient_accumulation_steps": args.gradient_accumulation_steps,
+        "warmup_steps": args.warmup_steps,
+        "learning_rate": args.learning_rate,
+        "logging_steps": 5,
+        "optim": args.optim,
+        "weight_decay": 0.01,
+        "lr_scheduler_type": "linear",
+        "seed": args.seed,
+        "report_to": "none",
+        "load_best_model_at_end": True,
+    }
+    
+    # Use epochs or steps based on arguments
+    if args.num_train_epochs is not None:
+        training_config["num_train_epochs"] = args.num_train_epochs
+        print(f"Training for {args.num_train_epochs} epochs")
+    else:
+        training_config["max_steps"] = args.max_steps
+        print(f"Training for {args.max_steps} steps")
+    
+    training_args = SFTConfig(**training_config)
     
     trainer = SFTTrainer(
         model=model,
@@ -94,6 +103,12 @@ def main(args):
     print("--- Starting Qwen Fine-Tuning Script ---")
     print(f"Model: {args.model_name}")
     print(f"Dataset: {args.dataset_path}")
+    
+    # Validate training arguments
+    if args.num_train_epochs is not None and args.num_train_epochs <= 0:
+        raise ValueError("num_train_epochs must be positive if specified")
+    if args.num_train_epochs is None and args.max_steps <= 0:
+        raise ValueError("max_steps must be positive if num_train_epochs is not specified")
     
     print("\n--- Step 1: Loading Model and Tokenizer ---")
     
@@ -236,7 +251,8 @@ if __name__ == "__main__":
     parser.add_argument("--per_device_train_batch_size", type=int, default=2, help="Batch size per GPU for training.")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=4, help="Number of steps to accumulate gradients.")
     parser.add_argument("--learning_rate", type=float, default=2e-4, help="Initial learning rate.")
-    parser.add_argument("--max_steps", type=int, default=100, help="Total number of training steps to perform.")
+    parser.add_argument("--max_steps", type=int, default=100, help="Total number of training steps to perform (used if num_train_epochs is not specified).")
+    parser.add_argument("--num_train_epochs", type=int, default=None, help="Total number of training epochs to perform (overrides max_steps if specified).")
     parser.add_argument("--warmup_steps", type=int, default=5, help="Number of warmup steps for the learning rate scheduler.")
     parser.add_argument("--optim", type=str, default="adamw_8bit", help="Optimizer to use.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
