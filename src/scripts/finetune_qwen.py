@@ -19,6 +19,37 @@ from data_management.loaders import load_labeled_df
 from utils.prompt_template import create_comprehensive_prompt_template, create_simple_prompt_template
 from utils.balanced_sampling import create_balanced_multilabel_sample, analyze_class_distribution
 
+# Model mapping for easier selection
+QWEN_MODELS = {
+    "1.7b": "unsloth/Qwen3-1.7B-unsloth-bnb-4bit",
+    "4b": "unsloth/Qwen3-4B-unsloth-bnb-4bit",
+    "8b": "unsloth/Qwen3-8B-unsloth-bnb-4bit",
+    "14b": "unsloth/Qwen3-14B-unsloth-bnb-4bit",
+    "32b": "unsloth/Qwen3-32B-unsloth-bnb-4bit",
+}
+
+def resolve_model_name(model_input):
+    """
+    Resolve model name from either size (e.g., '4b') or full model name.
+    
+    Args:
+        model_input: Either a size key ('4b', '32b', etc.) or full model name
+        
+    Returns:
+        Full model name
+    """
+    # If it's a size key, look it up in the mapping
+    if model_input.lower() in QWEN_MODELS:
+        return QWEN_MODELS[model_input.lower()]
+    
+    # If it's already a full model name (contains '/'), return as-is
+    if '/' in model_input:
+        return model_input
+    
+    # If it's not in our mapping and doesn't contain '/', show available options
+    available_sizes = list(QWEN_MODELS.keys())
+    raise ValueError(f"Unknown model size '{model_input}'. Available sizes: {available_sizes}")
+
 def format_dataset(df, tokenizer, use_comprehensive=True):
     """
     Formats the dataframe into a dataset ready for SFTTrainer.
@@ -50,7 +81,7 @@ def format_dataset(df, tokenizer, use_comprehensive=True):
             {"role": "user", "content": user_content},
             {"role": "assistant", "content": f"[{row['narratives_str']}]"},
         ]
-        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False, enable_thinking=False)
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False, enable_thinking=True)
 
     # Apply the function to create a new column with the formatted text
     texts = df.apply(create_chat_prompt, axis=1).tolist()
@@ -100,8 +131,12 @@ def main(args):
     """
     Main function to execute the fine-tuning pipeline.
     """
+    # Resolve the model name from size or full name
+    resolved_model_name = resolve_model_name(args.model_name)
+    
     print("--- Starting Qwen Fine-Tuning Script ---")
-    print(f"Model: {args.model_name}")
+    print(f"Model size/name: {args.model_name}")
+    print(f"Resolved model: {resolved_model_name}")
     print(f"Dataset: {args.dataset_path}")
     
     # Validate training arguments
@@ -113,7 +148,7 @@ def main(args):
     print("\n--- Step 1: Loading Model and Tokenizer ---")
     
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=args.model_name,
+        model_name=resolved_model_name,
         max_seq_length=args.max_seq_length,
         dtype=None,
         load_in_4bit=True
@@ -209,7 +244,7 @@ def main(args):
                                            tokenize = True,
                                            add_generation_prompt = True,
                                            return_tensors = "pt",
-                                           enable_thinking=False).to("cuda")
+                                           enable_thinking=True).to("cuda")
 
     # Generate the response
     outputs = model.generate(input_ids = inputs)
@@ -227,7 +262,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fine-tune a Qwen model for narrative classification.")
 
     # Model and data arguments
-    parser.add_argument("--model_name", type=str, default="unsloth/Qwen3-4B-Instruct-2507-unsloth-bnb-4bit", help="The model name to use from Hugging Face.")
+    parser.add_argument("--model_name", type=str, default="4b", help="Model size (1.7b, 4b, 8b, 14b, 32b) or full model name from Hugging Face.")
     parser.add_argument("--dataset_path", type=str, default="data/processed/phase0_baseline_labeled.parquet", help="Path to the labeled parquet dataset.")
     parser.add_argument("--output_dir", type=str, default="models/qwen-finetuned", help="Directory to save the fine-tuned model.")
     parser.add_argument("--max_seq_length", type=int, default=2048, help="Maximum sequence length for the model.")

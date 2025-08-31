@@ -113,8 +113,11 @@ def parse_narratives(response):
 def main():
     parser = argparse.ArgumentParser(description="Test inference on a single text with finetuned Qwen model.")
     
-    parser.add_argument("--text", type=str, required=True,
-                        help="Text to analyze for narratives.")
+    # Make text and file mutually exclusive
+    text_group = parser.add_mutually_exclusive_group(required=True)
+    text_group.add_argument("--text", type=str, help="Text to analyze for narratives.")
+    text_group.add_argument("--file", type=str, help="Path to text file to analyze for narratives.")
+    
     parser.add_argument("--model_path", type=str, default="models/qwen/smoke-test-qwen-1.7b/final_model",
                         help="Path to finetuned model.")
     parser.add_argument("--base_model", type=str, default="unsloth/Qwen3-4B-Instruct-2507-unsloth-bnb-4bit",
@@ -126,17 +129,34 @@ def main():
     
     args = parser.parse_args()
     
+    # Get text from either argument or file
+    if args.text:
+        input_text = args.text
+        source = "Direct input"
+    else:
+        try:
+            with open(args.file, 'r', encoding='utf-8') as f:
+                input_text = f.read().strip()
+            source = f"File: {args.file}"
+        except FileNotFoundError:
+            print(f"Error: File '{args.file}' not found.")
+            return
+        except Exception as e:
+            print(f"Error reading file '{args.file}': {e}")
+            return
+    
     print("="*60)
     print("QWEN NARRATIVE DETECTION")
     print("="*60)
-    print(f"Input Text: {args.text}")
+    print(f"Source: {source}")
+    print(f"Input Text: {input_text[:200]}..." if len(input_text) > 200 else f"Input Text: {input_text}")
     print("-"*60)
     
     # Load model
     model, tokenizer = load_model(args.model_path, args.base_model, max_seq_length=args.max_seq_length)
     
     # Get prediction
-    raw_response = predict_narratives(args.text, model, tokenizer, args.use_simple_prompt)
+    raw_response = predict_narratives(input_text, model, tokenizer, args.use_simple_prompt)
     detected_narratives = parse_narratives(raw_response)
     
     # Output results
