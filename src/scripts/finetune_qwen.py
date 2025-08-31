@@ -16,8 +16,7 @@ from trl import SFTTrainer, SFTConfig
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data_management.loaders import load_labeled_df
-from utils.prompt_template import create_comprehensive_prompt_template, create_simple_prompt_template
-from utils.balanced_sampling import create_balanced_multilabel_sample, analyze_class_distribution
+from utils.prompt_template import create_comprehensive_prompt_template, create_constrained_prompt_template, create_simple_prompt_template
 
 # Model mapping for easier selection
 QWEN_MODELS = {
@@ -50,7 +49,7 @@ def resolve_model_name(model_input):
     available_sizes = list(QWEN_MODELS.keys())
     raise ValueError(f"Unknown model size '{model_input}'. Available sizes: {available_sizes}")
 
-def format_dataset(df, tokenizer, use_comprehensive=True):
+def format_dataset(df, tokenizer, prompt_type = "comprehensive"):
     """
     Formats the dataframe into a dataset ready for SFTTrainer.
     Each row is converted into a chat format string.
@@ -62,10 +61,12 @@ def format_dataset(df, tokenizer, use_comprehensive=True):
     """
     
     # Get the appropriate prompt template
-    if use_comprehensive:
+    if prompt_type == "comprehensive":
         prompt_template = create_comprehensive_prompt_template()
-    else:
+    elif prompt_type == "simple":
         prompt_template = create_simple_prompt_template()
+    elif prompt_type == "constrained":
+        prompt_template = create_constrained_prompt_template()
     
     # Convert the 'narratives' column (which contains lists) into a semicolon-separated string
     df['narratives_str'] = df['narratives'].apply(
@@ -81,7 +82,7 @@ def format_dataset(df, tokenizer, use_comprehensive=True):
             {"role": "user", "content": user_content},
             {"role": "assistant", "content": f"[{row['narratives_str']}]"},
         ]
-        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False, enable_thinking=True)
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False, enable_thinking=False)
 
     # Apply the function to create a new column with the formatted text
     texts = df.apply(create_chat_prompt, axis=1).tolist()
@@ -204,9 +205,9 @@ def main(args):
     train_df, eval_df = train_test_split(narratives_df, test_size=0.1, random_state=args.seed)
     print(f"Split dataset into {len(train_df)} training samples and {len(eval_df)} evaluation samples.")
     
-    train_dataset = format_dataset(train_df, tokenizer, use_comprehensive=not args.use_simple_prompt)
-    eval_dataset = format_dataset(eval_df, tokenizer, use_comprehensive=not args.use_simple_prompt)
-    
+    train_dataset = format_dataset(train_df, tokenizer, prompt_type=args.prompt_type)
+    eval_dataset = format_dataset(eval_df, tokenizer, prompt_type=args.prompt_type)
+
     print("Dataset formatted for training.")
     print("\nSample formatted training example:")
     print(train_dataset[0]['text'])
@@ -232,7 +233,14 @@ def main(args):
     test_text = "The Western sanctions are only strengthening Russia's resolve and economy, while hurting European citizens. This is a strategic failure by NATO."
     
     # Use the same prompt template as training
-    prompt_template = create_comprehensive_prompt_template() if not hasattr(args, 'use_simple_prompt') or not args.use_simple_prompt else create_simple_prompt_template()
+    print(f"Running inference test with '{args.prompt_type}' prompt...")
+    if args.prompt_type == "comprehensive":
+        prompt_template = create_comprehensive_prompt_template()
+    elif args.prompt_type == "simple":
+        prompt_template = create_simple_prompt_template()
+    elif args.prompt_type == "constrained":
+        prompt_template = create_constrained_prompt_template()
+   
     user_content = prompt_template.format(text=test_text)
     
     messages = [
@@ -244,7 +252,7 @@ def main(args):
                                            tokenize = True,
                                            add_generation_prompt = True,
                                            return_tensors = "pt",
-                                           enable_thinking=True).to("cuda")
+                                           enable_thinking=False).to("cuda")
 
     # Generate the response
     outputs = model.generate(input_ids = inputs)
@@ -267,8 +275,7 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str, default="models/qwen-finetuned", help="Directory to save the fine-tuned model.")
     parser.add_argument("--max_seq_length", type=int, default=2048, help="Maximum sequence length for the model.")
     parser.add_argument("--chat_template", type=str, default="qwen3-instruct", help="The chat template to use ('qwen2', 'chatml', etc.).")
-    parser.add_argument("--use_simple_prompt", action="store_true", help="Use simple prompt template instead of comprehensive one.")
-
+    
     parser.add_argument("--use_balanced_sampling", action="store_true",
                         help="Use balanced sampling to minimize 'Other' class and maximize class diversity.")
     parser.add_argument("--balanced_sample_size", type=int, default=1000,
@@ -278,6 +285,14 @@ if __name__ == "__main__":
     parser.add_argument("--min_samples_per_class", type=int, default=5,
                         help="Minimum samples per class in balanced sample.")
     
+    parser.add_argument(
+        "--prompt_type",
+        type=str,
+        default="comprehensive",
+        choices=["comprehensive", "simple", "constrained"], 
+        help="Type of prompt to use for training."
+    )
+        
     # LoRA arguments
     parser.add_argument("--lora_r", type=int, default=8, help="LoRA attention dimension (r).")
     parser.add_argument("--lora_alpha", type=int, default=32, help="LoRA alpha parameter.")
