@@ -81,7 +81,6 @@ def predict_narratives(text, model, tokenizer, prompt_type: str = "constrained",
             temperature=0.7,
             do_sample=True,
             pad_token_id=tokenizer.eos_token_id,
-            max_new_tokens=512  # Limit response length for batch processing
         )
     
     # Decode the response
