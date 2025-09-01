@@ -192,6 +192,35 @@ IDENTIFIED NARRATIVES:"""
 
     return prompt_template
 
+def create_constrained_prompt_template(
+    definitions_path: str = "data/narrative_definitions.csv"
+) -> str:
+    """
+    Creates a prompt with the core instruction and a list of all possible narrative labels.
+    """
+    # We can reuse this function to get the list of labels
+    narratives = get_unique_narratives_from_definitions(definitions_path)
+    
+    # Format the list of narratives for the prompt
+    narrative_list_str = "\n- ".join(narratives)
+    
+    prompt_template = f"""You are a propaganda analyst. Your task is to identify which of the following propaganda narratives are present in the given text.
+
+## AVAILABLE NARRATIVES
+- {narrative_list_str}
+- Other
+
+## INSTRUCTIONS
+- Analyze the text and identify all matching narratives from the list above.
+- Your response MUST be a semicolon-separated list of the exact narrative names inside brackets.
+- For example: [narrative1; narrative2]
+- If no narratives from the list are found, respond with [Other].
+
+Text: {{text}}
+
+IDENTIFIED NARRATIVES:"""
+    
+    return prompt_template
 
 def format_prompt_for_training(
     text: str, 
