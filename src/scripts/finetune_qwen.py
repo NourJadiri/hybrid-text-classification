@@ -11,6 +11,11 @@ from sklearn.model_selection import train_test_split
 from transformers import TrainingArguments
 from trl import SFTTrainer, SFTConfig
 
+# Set HuggingFace cache directory to workspace (which has more space)
+os.environ['HF_HOME'] = '/workspace/.hf_cache'
+os.environ['TRANSFORMERS_CACHE'] = '/workspace/.hf_cache'
+os.environ['HF_DATASETS_CACHE'] = '/workspace/.hf_cache/datasets'
+
 # Since this script is in src/scripts, we need to adjust the path to import from src
 # This is a common pattern for making scripts runnable from the project root.
 import sys
