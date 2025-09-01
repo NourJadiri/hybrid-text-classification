@@ -81,6 +81,9 @@ def predict_narratives(text, model, tokenizer, prompt_type: str = "constrained",
             temperature=0.7,
             do_sample=True,
             pad_token_id=tokenizer.eos_token_id,
+            max_new_tokens=2048,
+            repetition_penalty=1.1,
+            no_repeat_ngram_size=3
         )
     
     # Decode the response
