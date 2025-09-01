@@ -42,7 +42,7 @@ def load_model(model_path, max_seq_length=4096, chat_template="qwen3-instruct"):
     
     return model, tokenizer
 
-def predict_narratives(text, model, tokenizer, prompt_type: str = "constrained"):
+def predict_narratives(text, model, tokenizer, prompt_type: str = "constrained", return_prompt: bool = False):
     """Predict narratives for the given text.
 
     prompt_type: one of 'constrained', 'simple' or 'comprehensive'.
@@ -93,9 +93,9 @@ def predict_narratives(text, model, tokenizer, prompt_type: str = "constrained")
         assistant_response = full_response.split("<|im_start|>assistant\n")[1]
         if "<|im_end|>" in assistant_response:
             assistant_response = assistant_response.replace("<|im_end|>", "").strip()
-        return assistant_response
+        return (assistant_response, user_content) if return_prompt else assistant_response
     
-    return full_response
+    return (full_response, user_content) if return_prompt else full_response
 
 def parse_narratives(response):
     """Parse the model response to extract narratives."""
@@ -130,7 +130,7 @@ def find_text_files(input_path: str) -> List[str]:
     else:
         raise ValueError(f"Input path {input_path} is neither a file nor a directory")
 
-def process_text_files(text_files: List[str], model, tokenizer, prompt_type: str) -> List[Dict]:
+def process_text_files(text_files: List[str], model, tokenizer, prompt_type: str, full_output: bool) -> List[Dict]:
     """Process all text files and return results."""
     results = []
     
@@ -154,7 +154,12 @@ def process_text_files(text_files: List[str], model, tokenizer, prompt_type: str
             print(f"[{i}/{total_files}] Processing: {filename}")
             
             # Get prediction
-            raw_response = predict_narratives(text_content, model, tokenizer, prompt_type)
+            pred = predict_narratives(text_content, model, tokenizer, prompt_type, return_prompt=full_output)
+            if full_output:
+                raw_response, used_prompt = pred
+            else:
+                raw_response = pred
+                used_prompt = None
             detected_narratives = parse_narratives(raw_response)
             
             # Store result
@@ -163,11 +168,20 @@ def process_text_files(text_files: List[str], model, tokenizer, prompt_type: str
                 'detected_narratives': detected_narratives,
                 'raw_response': raw_response
             }
+            if full_output:
+                result['prompt'] = used_prompt
+                result['text'] = text_content
             results.append(result)
             
             # Print progress
             narrative_str = ';'.join(detected_narratives)
             print(f"  -> Detected: {narrative_str}")
+            if full_output:
+                print("  --- Full Output Start ---")
+                print(f"  [PROMPT]\n{used_prompt}")
+                print(f"  [TEXT]\n{text_content}")
+                print(f"  [MODEL OUTPUT]\n{raw_response}")
+                print("  --- Full Output End ---")
             
         except Exception as e:
             print(f"Error processing {file_path}: {e}")
@@ -200,7 +214,7 @@ def write_annotation_file(results: List[Dict], output_path: str):
     
     print(f"Results written to: {output_path}")
 
-def single_text_inference(text_input: str, model, tokenizer, prompt_type: str):
+def single_text_inference(text_input: str, model, tokenizer, prompt_type: str, full_output: bool):
     """Process a single text input (for backward compatibility)."""
     
     print("="*60)
@@ -210,11 +224,25 @@ def single_text_inference(text_input: str, model, tokenizer, prompt_type: str):
     print("-"*60)
     
     # Get prediction
-    raw_response = predict_narratives(text_input, model, tokenizer, prompt_type)
+    pred = predict_narratives(text_input, model, tokenizer, prompt_type, return_prompt=full_output)
+    if full_output:
+        raw_response, used_prompt = pred
+    else:
+        raw_response = pred
+        used_prompt = None
     detected_narratives = parse_narratives(raw_response)
     
     # Output results
     print(f"Raw Response: {raw_response}")
+    if full_output:
+        print("-"*60)
+        print("FULL OUTPUT")
+        print("[PROMPT]")
+        print(used_prompt)
+        print("[TEXT]")
+        print(text_input)
+        print("[MODEL OUTPUT]")
+        print(raw_response)
     print(f"Detected Narratives: {detected_narratives}")
     print("="*60)
 
@@ -240,6 +268,8 @@ def main():
     # Output options
     parser.add_argument("--output", type=str, 
                         help="Output file path for batch results (TSV format). If not specified, uses input folder name.")
+    parser.add_argument("--full_output", action="store_true",
+                        help="Include full prompt and input text in outputs and logs. If set, batch TSV will include additional columns: prompt, text, model_output.")
     
     args = parser.parse_args()
     
@@ -253,14 +283,14 @@ def main():
     # Handle different input types
     if args.text:
         # Single text input
-        single_text_inference(args.text, model, tokenizer, args.prompt_type)
+        single_text_inference(args.text, model, tokenizer, args.prompt_type, args.full_output)
         
     elif args.file:
         # Single file input
         try:
             with open(args.file, 'r', encoding='utf-8') as f:
                 text_content = f.read().strip()
-            single_text_inference(text_content, model, tokenizer, args.prompt_type)
+            single_text_inference(text_content, model, tokenizer, args.prompt_type, args.full_output)
         except Exception as e:
             print(f"Error reading file '{args.file}': {e}")
             return
@@ -284,7 +314,7 @@ def main():
                 return
             
             # Process all files
-            results = process_text_files(text_files, model, tokenizer, args.prompt_type)
+            results = process_text_files(text_files, model, tokenizer, args.prompt_type, args.full_output)
             
             # Determine output path
             if args.output:
