@@ -122,14 +122,14 @@ def main():
     text_group.add_argument("--text", type=str, help="Text to analyze for narratives.")
     text_group.add_argument("--file", type=str, help="Path to text file to analyze for narratives.")
     
-    parser.add_argument("--model_path", type=str, default="models/qwen/smoke-test-qwen-1.7b/final_model",
+    parser.add_argument("--model_path", type=str, required=True,
                         help="Path to finetuned model.")
-    parser.add_argument("--base_model", type=str, default="unsloth/Qwen3-4B-Instruct-2507-unsloth-bnb-4bit",
-                        help="Base model name.")
     parser.add_argument("--prompt_type", type=str, choices=["constrained", "simple", "comprehensive"], 
                         default="constrained", help="Type of prompt template to use.")
     parser.add_argument("--max_seq_length", type=int, default=4096,
-                    help="The maximum sequence length of the model.")
+                        help="The maximum sequence length of the model.")
+    parser.add_argument("--chat_template", type=str, default="qwen3-instruct",
+                        help="Chat template to use.")
     
     args = parser.parse_args()
     
@@ -157,7 +157,9 @@ def main():
     print("-"*60)
     
     # Load model
-    model, tokenizer = load_model(args.model_path, max_seq_length=args.max_seq_length)
+    model, tokenizer = load_model(args.model_path, 
+                                  max_seq_length=args.max_seq_length,
+                                  chat_template=args.chat_template)
 
     # Get prediction
     raw_response = predict_narratives(input_text, model, tokenizer, args.prompt_type)
