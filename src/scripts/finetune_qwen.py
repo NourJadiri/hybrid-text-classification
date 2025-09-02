@@ -22,7 +22,7 @@ from utils.prompt_template import create_comprehensive_prompt_template, create_c
 QWEN_MODELS = {
     "0.6b": "unsloth/Qwen3-0.6B-unsloth-bnb-4bit",
     "1.7b": "unsloth/Qwen3-1.7B-unsloth-bnb-4bit",
-    "4b": "unsloth/Qwen3-4B-unsloth-bnb-4bit",
+    "4b": "unsloth/Qwen3-4B-Instruct-2507-unsloth-bnb-4bit",
     "8b": "unsloth/Qwen3-8B-unsloth-bnb-4bit",
     "14b": "unsloth/Qwen3-14B-unsloth-bnb-4bit",
     "32b": "unsloth/Qwen3-32B-unsloth-bnb-4bit",
