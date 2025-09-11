@@ -150,6 +150,3 @@ def print_sample_definitions(n: int = 5,
     _print_samples(sub_defs, "Subnarratives")
 
     print("\nDone.")
-
-if __name__ == "__main__":
-    print_sample_definitions(n=5)
