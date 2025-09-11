@@ -98,7 +98,7 @@ Your task is to analyze the given text and identify which specific propaganda na
     # Add URW narrative definitions
     for narrative in urw_narratives:
         if narrative in definitions:
-            prompt_template += f"\n**{narrative}**\n"
+            prompt_template += f"\n{narrative}\n"
             prompt_template += f"Definition: {definitions[narrative]['definition']}\n"
             if definitions[narrative]['example']:
                 prompt_template += f"Examples: {definitions[narrative]['example']}\n"
@@ -108,7 +108,7 @@ Your task is to analyze the given text and identify which specific propaganda na
     # Add CC narrative definitions
     for narrative in cc_narratives:
         if narrative in definitions:
-            prompt_template += f"\n**{narrative}**\n"
+            prompt_template += f"\n{narrative}\n"
             prompt_template += f"Definition: {definitions[narrative]['definition']}\n"
             if definitions[narrative]['example']:
                 prompt_template += f"Examples: {definitions[narrative]['example']}\n"
@@ -118,7 +118,7 @@ Your task is to analyze the given text and identify which specific propaganda na
         prompt_template += "\n### Other Categories:\n"
         for narrative in other_narratives:
             if narrative in definitions:
-                prompt_template += f"\n**{narrative}**\n"
+                prompt_template += f"\n{narrative}\n"
                 prompt_template += f"Definition: {definitions[narrative]['definition']}\n"
                 if definitions[narrative]['example']:
                     prompt_template += f"Examples: {definitions[narrative]['example']}\n"
@@ -144,6 +144,7 @@ Provide your analysis in the following structured format:
 **IDENTIFIED NARRATIVES:** [narrative1; narrative2; narrative3; ...]
 
 Where:
+- Wrap the narrative list in square brackets ([])
 - Each narrative should be the exact name from the categories above
 - Use semicolons (;) to separate multiple narratives
 - If no propaganda narratives are detected, respond with: [Other]
@@ -160,9 +161,7 @@ Where:
 Please analyze the following text:
 
 Text: {text}
-
-**IDENTIFIED NARRATIVES:**"""
-    
+    """
     return prompt_template
 
 

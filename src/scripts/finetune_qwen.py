@@ -17,20 +17,12 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data_management.loaders import load_labeled_df
 from utils.prompt_template import create_comprehensive_prompt_template, create_constrained_prompt_template, create_simple_prompt_template
-
-# Model mapping for easier selection
-QWEN_MODELS = {
-    "0.6b": "unsloth/Qwen3-0.6B-unsloth-bnb-4bit",
-    "1.7b": "unsloth/Qwen3-1.7B-unsloth-bnb-4bit",
-    "4b": "unsloth/Qwen3-4B-Instruct-2507-unsloth-bnb-4bit",
-    "8b": "unsloth/Qwen3-8B-unsloth-bnb-4bit",
-    "14b": "unsloth/Qwen3-14B-unsloth-bnb-4bit",
-    "32b": "unsloth/Qwen3-32B-unsloth-bnb-4bit",
-}
+from utils.model_mappings import resolve_model_name as resolve_model_name_util, QWEN3_MODELS
 
 def resolve_model_name(model_input):
     """
     Resolve model name from either size (e.g., '4b') or full model name.
+    Uses the centralized model mappings from utils.model_mappings.
     
     Args:
         model_input: Either a size key ('4b', '32b', etc.) or full model name
@@ -38,17 +30,7 @@ def resolve_model_name(model_input):
     Returns:
         Full model name
     """
-    # If it's a size key, look it up in the mapping
-    if model_input.lower() in QWEN_MODELS:
-        return QWEN_MODELS[model_input.lower()]
-    
-    # If it's already a full model name (contains '/'), return as-is
-    if '/' in model_input:
-        return model_input
-    
-    # If it's not in our mapping and doesn't contain '/', show available options
-    available_sizes = list(QWEN_MODELS.keys())
-    raise ValueError(f"Unknown model size '{model_input}'. Available sizes: {available_sizes}")
+    return resolve_model_name_util(model_input, model_family="qwen3")
 
 def format_dataset(df, tokenizer, prompt_type = "comprehensive"):
     """

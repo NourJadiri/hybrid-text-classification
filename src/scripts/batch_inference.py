@@ -18,9 +18,27 @@ from utils.prompt_template import (
     create_simple_prompt_template,
     create_constrained_prompt_template,
 )
+from utils.model_mappings import resolve_model_name, list_model_families
 
-def load_model(model_path, max_seq_length=4096, chat_template="qwen3-instruct"):
-    """Load the model and tokenizer using unsloth (works for both vanilla and fine-tuned models)."""
+def load_model(model_input, max_seq_length=4096, chat_template="qwen3-instruct", model_family="qwen3"):
+    """Load the model and tokenizer using unsloth (works for both vanilla and fine-tuned models).
+    
+    Args:
+        model_input: Either a short model name (e.g., '4b', '8b') or full model path
+        max_seq_length: Maximum sequence length
+        chat_template: Chat template to use
+        model_family: Model family for short name resolution (default: 'qwen3')
+    """
+    
+    # Resolve model name (handles both short names and full paths)
+    try:
+        model_path = resolve_model_name(model_input, model_family)
+        print(f"Resolved '{model_input}' to: {model_path}")
+    except ValueError:
+        # If resolution fails, assume it's already a full path
+        model_path = model_input
+        print(f"Using model path as-is: {model_path}")
+    
     print(f"Loading model from: {model_path}")
     
     # Load model with unsloth
@@ -78,12 +96,10 @@ def predict_narratives(text, model, tokenizer, prompt_type: str = "constrained",
     with torch.no_grad():
         outputs = model.generate(
             input_ids=inputs,
-            temperature=0.7,
+            temperature=0.6,
             do_sample=True,
             pad_token_id=tokenizer.eos_token_id,
-            max_new_tokens=2048,
-            repetition_penalty=1.1,
-            no_repeat_ngram_size=3
+            max_new_tokens=1024,
         )
     
     # Decode the response
@@ -118,6 +134,43 @@ def parse_narratives(response):
     
     # If no brackets found, return Other
     return ['Other']
+
+def validate_data_path(input_path: str) -> bool:
+    """Validate if the data folder or file exists.
+    
+    Args:
+        input_path: Path to file or directory to validate
+        
+    Returns:
+        bool: True if path exists and is accessible, False otherwise
+        
+    Raises:
+        SystemExit: If path doesn't exist or is not accessible
+    """
+    if not input_path:
+        print("Error: No input path provided")
+        sys.exit(1)
+    
+    if not os.path.exists(input_path):
+        print(f"Error: Input path '{input_path}' does not exist")
+        sys.exit(1)
+    
+    if not os.access(input_path, os.R_OK):
+        print(f"Error: Input path '{input_path}' is not readable")
+        sys.exit(1)
+    
+    if os.path.isfile(input_path):
+        print(f"✓ Validated file: {input_path}")
+    elif os.path.isdir(input_path):
+        print(f"✓ Validated directory: {input_path}")
+        # Check if directory contains any .txt files
+        txt_files = glob.glob(os.path.join(input_path, "*.txt"))
+        if not txt_files:
+            print(f"Warning: Directory '{input_path}' contains no .txt files")
+        else:
+            print(f"  Found {len(txt_files)} .txt files")
+    
+    return True
 
 def find_text_files(input_path: str) -> List[str]:
     """Find all text files in the given path."""
@@ -172,7 +225,6 @@ def process_text_files(text_files: List[str], model, tokenizer, prompt_type: str
             }
             if full_output:
                 result['prompt'] = used_prompt
-                result['text'] = text_content
             results.append(result)
             
             # Print progress
@@ -181,7 +233,6 @@ def process_text_files(text_files: List[str], model, tokenizer, prompt_type: str
             if full_output:
                 print("  --- Full Output Start ---")
                 print(f"  [PROMPT]\n{used_prompt}")
-                print(f"  [TEXT]\n{text_content}")
                 print(f"  [MODEL OUTPUT]\n{raw_response}")
                 print("  --- Full Output End ---")
             
@@ -241,8 +292,6 @@ def single_text_inference(text_input: str, model, tokenizer, prompt_type: str, f
         print("FULL OUTPUT")
         print("[PROMPT]")
         print(used_prompt)
-        print("[TEXT]")
-        print(text_input)
         print("[MODEL OUTPUT]")
         print(raw_response)
     print(f"Detected Narratives: {detected_narratives}")
@@ -255,11 +304,15 @@ def main():
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--text", type=str, help="Single text to analyze for narratives.")
     input_group.add_argument("--file", type=str, help="Path to single text file to analyze.")
-    input_group.add_argument("--folder", type=str, help="Path to folder containing text files to process.")
+    input_group.add_argument("--folder", type=str, help="Path to folder containing text files to process.", default="devset/EN/subtask-2-documents")
     
     # Model and processing options
     parser.add_argument("--model_path", type=str, required=True,
-                        help="Path to finetuned model.")
+                        help="Path to model or short model name (e.g., '4b', '8b', '32b'). "
+                             "Short names will be resolved using model mappings.")
+    parser.add_argument("--model_family", type=str, default="qwen3",
+                        help="Model family for short name resolution (e.g., 'qwen3', 'llama4', 'gemma3'). "
+                             f"Available families: {list_model_families()}")
     parser.add_argument("--prompt_type", type=str, choices=["constrained", "simple", "comprehensive"], 
                         default="constrained", help="Type of prompt template to use.")
     parser.add_argument("--max_seq_length", type=int, default=4096,
@@ -275,11 +328,16 @@ def main():
     
     args = parser.parse_args()
     
-    # Load model
+    # Validate data paths before loading model
+    if args.file:
+        validate_data_path(args.file)
+    elif args.folder:
+        validate_data_path(args.folder)
+
     print("Loading model...")
     model, tokenizer = load_model(args.model_path, 
                                   max_seq_length=args.max_seq_length,
-                                  chat_template=args.chat_template)
+                                  chat_template=args.chat_template, model_family=args.model_family)
     print("Model loaded successfully!")
     
     # Handle different input types
