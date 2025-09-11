@@ -1,6 +1,26 @@
 import pandas as pd
+import json
 from typing import Dict, List
 
+def load_taxonomy(file_path: str = "data/taxonomy.json") -> Dict[str, Dict[str, List[str]]]:
+    """
+    Load taxonomy from a JSON file.
+
+    Args:
+        file_path: Path to the taxonomy JSON file
+    Returns:
+        Dictionary mapping categories to their themes and narratives
+    """
+    try:
+        with open(file_path, 'r') as f:
+            taxonomy = json.load(f)
+        return taxonomy
+    except FileNotFoundError:
+        print(f"Warning: Taxonomy file not found at {file_path}")
+        return {}
+    except Exception as e:
+        print(f"Error loading taxonomy: {e}")
+        return {}
 
 def load_narrative_definitions(file_path: str = "data/narrative_definitions.csv") -> Dict[str, Dict[str, str]]:
     """
