@@ -3,7 +3,7 @@ from typing import List
 from label_info import load_narrative_definitions, load_taxonomy, load_subnarrative_definitions
 
 
-def create_category_prompt(text: str) -> str:
+def create_category_prompt_template(text: str) -> str:
     """
     Create a concise prompt that forces the model to output a bracketed label on
     the first non-empty line: [URW], [CC], or [Other]. Optionally one EVIDENCE:
