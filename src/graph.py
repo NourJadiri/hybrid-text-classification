@@ -8,8 +8,13 @@ from extract import extract_category, extract_narratives, extract_subnarratives
 from label_info import flatten_taxonomy, load_taxonomy
 from prompt_template import create_category_system_prompt, create_narrative_system_prompt, create_subnarrative_system_prompt, create_subnarrative_system_prompt
 from utils import get_texts_in_folder
+from dotenv import load_dotenv
+import sys
+
+load_dotenv()
 
 llm = init_chat_model("openai:gpt-5-mini")
+
 taxonomy = load_taxonomy()
 flat_narratives, flat_subnarratives = flatten_taxonomy(taxonomy)
 
@@ -48,6 +53,32 @@ def classify_category_node(state: ClassificationState) -> dict:
     print(f"[graph] Category classification complete -> {category}")
 
     return {"category": category}
+
+def handle_other_category_node(state: ClassificationState) -> dict:
+    """
+    Handles the case where the category is 'Other'.
+    It sets narratives and subnarratives to ['Other'] to bypass the main pipeline.
+    """
+    print("[graph] Category is 'Other', taking shortcut.")
+    return {
+        "narratives": ["Other"],
+        "subnarratives": ["Other"]
+    }
+    
+def route_after_category(state: ClassificationState) -> str:
+    """
+    Determines the next step after category classification.
+    - If category is 'Other', routes to the shortcut node.
+    - Otherwise, proceeds with narrative classification.
+    """
+    category = state.get("category")
+
+    if category == "Other":
+        # Return the name of the shortcut node
+        return "handle_other_category"
+    else:
+        # Return the name of the normal next node
+        return "narratives"
 
 def classify_narratives_node(state: ClassificationState) -> dict:
     text = state["text"]
@@ -159,14 +190,24 @@ def create_classification_graph():
     builder.add_node("clean_narratives", clean_narratives_node)
     builder.add_node("subnarratives", classify_subnarratives_node)
     builder.add_node("clean_subnarratives", clean_subnarratives_node)
+    builder.add_node("handle_other_category", handle_other_category_node)
     builder.add_node("write_results", write_results_node)
 
     builder.add_edge(START, "categories")
-    builder.add_edge("categories", "narratives")
+    builder.add_conditional_edges(
+        condition_func=route_after_category,
+        edges={
+            "handle_other_category": "handle_other_category",
+            "narratives": "narratives"
+        }
+    )
     builder.add_edge("narratives", "clean_narratives")
     builder.add_edge("clean_narratives", "subnarratives")
     builder.add_edge("subnarratives", "clean_subnarratives")
+    
+    builder.add_edge("handle_other_category", "write_results")
     builder.add_edge("clean_subnarratives", "write_results")
+    
     builder.add_edge("write_results", END)
     
     graph = builder.compile()
@@ -176,12 +217,12 @@ def create_classification_graph():
 
 classification_graph = create_classification_graph()
 config = {
-    "max_concurrency": 10
+    "max_concurrency": 20
 }
 
-text_list, file_names = get_texts_in_folder("devset/EN/subtask-2-documents/")
+text_list, file_names = get_texts_in_folder("testset/EN/subtask-2-documents/")
 
-initial_states_batch = [{"text": text, "file_id": file_id} for text, file_id in zip(text_list[:20], file_names[:20])]
+initial_states_batch = [{"text": text, "file_id": file_id} for text, file_id in zip(text_list, file_names)]
 print(f"[graph] Initial states batch prepared with {len(initial_states_batch)} items.")
 
 async def main():

@@ -16,7 +16,7 @@ def create_category_system_prompt() -> str:
         "- First find the elements that indicate the topic, and reason through them step by step.\n"
         "- Output EXACTLY one label token enclosed in square brackets on the next line: [URW], [CC], or [Other].\n"
         "Classification guidance:\n"
-        "- Use [URW] for topics clearly about war, conflict, sanctions, refugees, Russia/Ukraine, NATO, military operations, or geopolitical blame.\n"
+        "- Use [URW] for topics clearly about the Russia-Ukraine conflict.\n"
         "- Use [CC] for topics clearly about climate, global warming, greenhouse gases, emissions, climate policy, renewable energy, sea level rise, or environmental impacts.\n"
         "- Use [Other] if neither topic is the primary focus.\n\n"
         "Exact example outputs (showing allowed formats):\n"
