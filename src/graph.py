@@ -1,3 +1,4 @@
+import os
 from typing import NotRequired
 from typing_extensions import TypedDict
 from langchain.chat_models import init_chat_model
@@ -6,6 +7,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from extract import extract_category, extract_narratives, extract_subnarratives
 from label_info import flatten_taxonomy, load_taxonomy
 from prompt_template import create_category_system_prompt, create_narrative_system_prompt, create_subnarrative_system_prompt, create_subnarrative_system_prompt
+from utils import get_texts_in_folder
 
 llm = init_chat_model("openai:gpt-5-mini")
 taxonomy = load_taxonomy()
@@ -17,6 +19,7 @@ class ClassificationState(TypedDict):
     category: NotRequired[str]
     narratives: NotRequired[list[str]]
     subnarratives: NotRequired[list[str]]
+    file_id: str
 
 def classify_category_node(state: ClassificationState) -> dict:
     """
@@ -66,7 +69,7 @@ def classify_narratives_node(state: ClassificationState) -> dict:
         return s.lower().startswith(f"{cat.lower()}:")
     
     narratives = [
-        n if _has_category_prefix(n, category) else f"{category}: {n}"
+        n if _has_category_prefix(n, category) or n == "Other" else f"{category}: {n}"
         for n in (narratives or [])
     ]
     print(f"[graph] Narratives classification complete -> {narratives}")
@@ -123,6 +126,28 @@ def clean_subnarratives_node(state: ClassificationState) -> dict:
 
     return {"subnarratives": cleaned_subnarratives}
 
+def write_results_node(state: ClassificationState) -> dict:
+    file_id = state["file_id"]
+    
+    narratives = state.get("narratives", ['Other'])
+    subnarratives = state.get("subnarratives", ['Other'])
+    print(f"[graph] Writing results for file {file_id}")
+    
+    narratives_str = ";".join(narratives) if narratives else "Other"
+    subnarratives_str = ";".join(subnarratives) if subnarratives else "Other"
+
+    output_line = f"{file_id}\t{narratives_str}\t{subnarratives_str}\n"
+
+    try:
+        with open("results/langgraph_results.txt", "a", encoding="utf-8") as f:
+            f.write(output_line)
+        print(f"[graph] Results written to results/langgraph_results.txt")
+    except Exception as e:
+        print(f"[graph] Error writing results: {e}")
+
+    return None
+
+
 def create_classification_graph():
     """Create and compile the text classification graph"""
     print("[graph] Building classification graph...")
@@ -134,13 +159,15 @@ def create_classification_graph():
     builder.add_node("clean_narratives", clean_narratives_node)
     builder.add_node("subnarratives", classify_subnarratives_node)
     builder.add_node("clean_subnarratives", clean_subnarratives_node)
+    builder.add_node("write_results", write_results_node)
 
     builder.add_edge(START, "categories")
     builder.add_edge("categories", "narratives")
     builder.add_edge("narratives", "clean_narratives")
     builder.add_edge("clean_narratives", "subnarratives")
     builder.add_edge("subnarratives", "clean_subnarratives")
-    builder.add_edge("clean_subnarratives", END)
+    builder.add_edge("clean_subnarratives", "write_results")
+    builder.add_edge("write_results", END)
     
     graph = builder.compile()
     print("[graph] Graph compiled")
@@ -148,16 +175,18 @@ def create_classification_graph():
     return graph
 
 classification_graph = create_classification_graph()
+config = {
+    "max_concurrency": 10
+}
 
-with open("devset/EN/subtask-2-documents/EN_CC_200033.txt", "r", encoding="utf-8") as file:
-    sample_text = file.read()
-    
-    sample_state = {"text": sample_text}
+text_list, file_names = get_texts_in_folder("devset/EN/subtask-2-documents/")
 
+initial_states_batch = [{"text": text, "file_id": file_id} for text, file_id in zip(text_list[:20], file_names[:20])]
+print(f"[graph] Initial states batch prepared with {len(initial_states_batch)} items.")
 
 async def main():
-    result = await classification_graph.ainvoke(sample_state)
-
+    results = await classification_graph.abatch(initial_states_batch, config=config)
+    
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
