@@ -3,6 +3,37 @@ from typing import List
 from label_info import load_narrative_definitions, load_taxonomy, load_subnarrative_definitions
 
 
+def has_category_prefix(text: str, category: str) -> bool:
+    """
+    Check if a text already has the specified category prefix.
+    
+    Args:
+        text: The text to check
+        category: The category prefix to check for (e.g., "URW", "CC")
+    
+    Returns:
+        True if the text already starts with "category: ", False otherwise
+    """
+    expected_prefix = f"{category}: "
+    return text.startswith(expected_prefix)
+
+
+def has_subnarrative_prefix(text: str, category: str, narrative_name: str) -> bool:
+    """
+    Check if a subnarrative already has the specified category and narrative prefix.
+    
+    Args:
+        text: The subnarrative text to check
+        category: The category prefix to check for (e.g., "URW", "CC")
+        narrative_name: The narrative name to check for
+    
+    Returns:
+        True if the text already starts with "category: narrative_name: ", False otherwise
+    """
+    expected_prefix = f"{category}: {narrative_name}: "
+    return text.startswith(expected_prefix)
+
+
 def create_category_system_prompt() -> str:
     """
     Create a system prompt for text classification that provides instructions 
@@ -50,10 +81,15 @@ def create_narrative_system_prompt(category: str, definitions_path: str = "data/
     
     prefixed_narratives = []
         
-    # Append the category prefix to all narratives and build theme_to_narratives
+    # Append the category prefix to narratives that don't already have it
     for narrative in narratives:
-        prefixed_narrative = f"{category}: {narrative}"
-        prefixed_narratives.append(prefixed_narrative)
+        if has_category_prefix(narrative, category):
+            # Narrative already has the category prefix, use as-is
+            prefixed_narratives.append(narrative)
+        else:
+            # Narrative doesn't have prefix, add it
+            prefixed_narrative = f"{category}: {narrative}"
+            prefixed_narratives.append(prefixed_narrative)
 
     prompt_template = (
         "You are an expert propaganda narrative analyst with extensive experience in identifying and classifying manipulative communication patterns.\n"
@@ -146,8 +182,13 @@ def create_subnarrative_system_prompt(narrative: str, definitions_path: str = "d
     # Create prefixed subnarratives (with category and narrative prefix)
     prefixed_subnarratives = []
     for subnarrative in subnarratives:
-        prefixed_subnarrative = f"{category}: {narrative_name}: {subnarrative}"
-        prefixed_subnarratives.append(prefixed_subnarrative)
+        if has_subnarrative_prefix(subnarrative, category, narrative_name):
+            # Subnarrative already has the full prefix, use as-is
+            prefixed_subnarratives.append(subnarrative)
+        else:
+            # Subnarrative doesn't have prefix, add it
+            prefixed_subnarrative = f"{category}: {narrative_name}: {subnarrative}"
+            prefixed_subnarratives.append(prefixed_subnarrative)
 
     prompt_template = (
         "You are an expert propaganda narrative analyst with extensive experience in identifying and classifying manipulative communication patterns.\n"
