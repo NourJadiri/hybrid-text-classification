@@ -3,30 +3,26 @@ from typing import List
 from label_info import load_narrative_definitions, load_taxonomy, load_subnarrative_definitions
 
 
-def create_category_prompt_template(text: str) -> str:
+def create_category_system_prompt() -> str:
     """
-    Create a concise prompt that forces the model to output a bracketed label on
-    the first non-empty line: [URW], [CC], or [Other]. Optionally one EVIDENCE:
-    line may follow.
+    Create a system prompt for text classification that provides instructions 
+    without including the text to be classified.
     """
-
+    
     prompt = (
-        "You are a strict topical classifier. Decide whether the following text is primarily about "
+        "You are a strict topical classifier. Decide whether the given text is primarily about "
         "URW (Ukraine-Russia War topics) or CC (Climate Change topics).\n\n"
         "Rules (follow exactly):\n"
-        "- Output EXACTLY one label token enclosed in square brackets on the first non-empty line: [URW], [CC], or [Other].\n"
-        "- Optionally, on the following line output 'EVIDENCE: ' followed by a short phrase (<=20 words) justifying the label.\n"
+        "- First find the elements that indicate the topic, and reason through them step by step.\n"
+        "- Output EXACTLY one label token enclosed in square brackets on the next line: [URW], [CC], or [Other].\n"
         "Classification guidance:\n"
         "- Use [URW] for topics clearly about war, conflict, sanctions, refugees, Russia/Ukraine, NATO, military operations, or geopolitical blame.\n"
         "- Use [CC] for topics clearly about climate, global warming, greenhouse gases, emissions, climate policy, renewable energy, sea level rise, or environmental impacts.\n"
         "- Use [Other] if neither topic is the primary focus.\n\n"
-        "Text to classify:\n\n"
-    )
-
-    prompt += text.strip() + "\n\n"
-    prompt += (
-        "Produce the label now following the rules above. Exact example outputs (showing allowed formats):\n"
-        "[URW]\nEVIDENCE: short justification\n\n[CC]\nEVIDENCE: short justification\n\n[Other]"
+        "Exact example outputs (showing allowed formats):\n"
+        "EVIDENCE: short justification\n[URW]\n\n"
+        "EVIDENCE: short justification\n[CC]\n\n"
+        "[Other]"
     )
 
     return prompt

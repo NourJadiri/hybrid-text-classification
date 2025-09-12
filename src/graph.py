@@ -1,86 +1,61 @@
-from langchain_core.tools import tool
+from typing import NotRequired
+from typing_extensions import TypedDict
 from langchain.chat_models import init_chat_model
-from langgraph.graph import add_messages
-from langchain_core.messages import (
-    SystemMessage,
-    HumanMessage,
-    BaseMessage,
-    ToolCall,
-    AIMessage,
-)
-from langgraph.func import entrypoint, task
+from langgraph.graph import StateGraph, START, END
+from langchain_core.messages import SystemMessage, HumanMessage
+
+from prompt_template import create_category_system_prompt
 
 llm = init_chat_model("openai:gpt-5-mini")
 
-@tool
-def add(a: int, b: int):
+class ClassificationState(TypedDict):
+    """State schema for text classification workflow"""
+    text: str
+    category: NotRequired[str]
+
+def classify_category_node(state: ClassificationState) -> dict:
     """
-    Adds two integers and returns the result.
+    Node function that classifies text into categories using the category prompt template.
+    
     Args:
-        a (int): The first integer to add.
-        b (int): The second integer to add.
+        state: Current state containing the text to classify
+        
     Returns:
-        int: The sum of a and b.
+        Dictionary with the classification result
     """
+    text = state["text"]
     
-    return a + b
-
-@tool
-def subtract(a: int, b: int):
-    """
-    Subtracts two integers.
-    Args:
-        a (int): The first number.
-        b (int): The second number.
-    Returns:
-        int: The result of a minus b.
-    """
+    system_prompt = create_category_system_prompt()
     
-    return a - b
-
-tools = [add, subtract]
-tools_by_name = {tool.name: tool for tool in tools}
-llm_with_tools = llm.bind_tools(tools)
-
-@task
-def call_llm(messages: list[BaseMessage]):
-    """LLM decides whether to call a tool or not"""
-    return llm_with_tools.invoke(
-        [
-            SystemMessage(
-                content="You are a helpful assistant tasked with performing arithmetic on a set of inputs."
-            )
-        ]
-        + messages
-    )
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=text)
+    ]
     
-@task
-def call_tool(tool_call: ToolCall):
-    """Performs the tool call"""
-    tool = tools_by_name[tool_call["name"]]
-    return tool.invoke(tool_call)
-@entrypoint()
-def agent(messages: list[BaseMessage]):
-    llm_response: BaseMessage = call_llm(messages).result()
+    response = llm.invoke(messages)
+    
+    return {"category": response.content}
 
-    while True:
-        if not llm_response.tool_calls:
-            break
+def create_classification_graph():
+    """Create and compile the text classification graph"""
+    
+    builder = StateGraph(ClassificationState)
+    
+    builder.add_node("classify", classify_category_node)
+    
+    builder.add_edge(START, "classify")
+    builder.add_edge("classify", END)
+    
+    graph = builder.compile()
+    
+    return graph
 
-        # Execute tools
-        tool_result_futures = [
-            call_tool(tool_call) for tool_call in llm_response.tool_calls
-        ]
-        tool_results = [fut.result() for fut in tool_result_futures]
-        messages = add_messages(messages, [llm_response, *tool_results])
-        llm_response = call_llm(messages).result()
+classification_graph = create_classification_graph()
 
-    messages = add_messages(messages, llm_response)
-    return messages
+with open("devset/EN/subtask-2-documents/EN_CC_200033.txt", "r", encoding="utf-8") as file:
+    sample_text = file.read()
+    
+    sample_state = {"text": sample_text}
 
-messages = [HumanMessage(content="Add 3 and 4.")]
-for chunk in agent.stream(messages, stream_mode="updates"):
-    print(chunk)
-    print("\n")
-
-
+result = classification_graph.invoke(sample_state)
+print(result)
