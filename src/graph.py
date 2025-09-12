@@ -4,9 +4,12 @@ from langchain.chat_models import init_chat_model
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import SystemMessage, HumanMessage
 from extract import extract_category, extract_narratives, extract_subnarratives
+from label_info import flatten_taxonomy, load_taxonomy
 from prompt_template import create_category_system_prompt, create_narrative_system_prompt, create_subnarrative_system_prompt, create_subnarrative_system_prompt
 
 llm = init_chat_model("openai:gpt-5-mini")
+taxonomy = load_taxonomy()
+flat_narratives, flat_subnarratives = flatten_taxonomy(taxonomy)
 
 class ClassificationState(TypedDict):
     """State schema for text classification workflow"""
@@ -70,6 +73,16 @@ def classify_narratives_node(state: ClassificationState) -> dict:
 
     return {"narratives": narratives}
 
+def clean_narratives_node(state: ClassificationState) -> dict:
+    narratives = state["narratives"]
+    
+    print(f"[graph] Cleaning narratives")
+    cleaned_narratives = [n for n in narratives if n in flat_narratives]
+    
+    print(f"[graph] Cleaned narratives -> {cleaned_narratives}")
+
+    return {"narratives": cleaned_narratives}
+
 async def classify_subnarratives_node(state: ClassificationState) -> dict:
     text = state["text"]
     narratives = state["narratives"]
@@ -100,6 +113,16 @@ async def classify_subnarratives_node(state: ClassificationState) -> dict:
 
     return {"subnarratives": all_subnarratives}
 
+def clean_subnarratives_node(state: ClassificationState) -> dict:
+    subnarratives = state["subnarratives"]
+    
+    print(f"[graph] Cleaning subnarratives")
+    cleaned_subnarratives = [sn for sn in subnarratives if sn in flat_subnarratives]
+    
+    print(f"[graph] Cleaned subnarratives -> {cleaned_subnarratives}")
+
+    return {"subnarratives": cleaned_subnarratives}
+
 def create_classification_graph():
     """Create and compile the text classification graph"""
     print("[graph] Building classification graph...")
@@ -108,13 +131,17 @@ def create_classification_graph():
     
     builder.add_node("categories", classify_category_node)
     builder.add_node("narratives", classify_narratives_node)
+    builder.add_node("clean_narratives", clean_narratives_node)
     builder.add_node("subnarratives", classify_subnarratives_node)
+    builder.add_node("clean_subnarratives", clean_subnarratives_node)
 
     builder.add_edge(START, "categories")
     builder.add_edge("categories", "narratives")
-    builder.add_edge("narratives", "subnarratives")
-    builder.add_edge("subnarratives", END)
-
+    builder.add_edge("narratives", "clean_narratives")
+    builder.add_edge("clean_narratives", "subnarratives")
+    builder.add_edge("subnarratives", "clean_subnarratives")
+    builder.add_edge("clean_subnarratives", END)
+    
     graph = builder.compile()
     print("[graph] Graph compiled")
 

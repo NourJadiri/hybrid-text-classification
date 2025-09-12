@@ -22,6 +22,24 @@ def load_taxonomy(file_path: str = "data/taxonomy.json") -> Dict[str, Dict[str, 
         print(f"Error loading taxonomy: {e}")
         return {}
 
+def flatten_taxonomy(taxonomy: dict) -> tuple[list[str], list[str]]:
+    flat_narratives = []
+    flat_subnarratives = []
+
+    for category, narratives in taxonomy.items():
+        for narrative, subnarratives in narratives.items():
+            flat_narrative_str = f"{category}: {narrative}"
+            flat_narratives.append(flat_narrative_str)
+
+            for subnarrative in subnarratives:
+                flat_subnarrative_str = f"{flat_narrative_str}: {subnarrative}"
+                flat_subnarratives.append(flat_subnarrative_str)
+
+            other_subnarrative_str = f"{flat_narrative_str}: Other"
+            flat_subnarratives.append(other_subnarrative_str)
+
+    return set(flat_narratives), set(flat_subnarratives)
+
 def load_narrative_definitions(file_path: str = "data/narrative_definitions.csv") -> Dict[str, Dict[str, str]]:
     """
     Load narrative definitions from CSV file.
