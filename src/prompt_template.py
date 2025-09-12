@@ -27,7 +27,7 @@ def create_category_system_prompt() -> str:
 
     return prompt
 
-def create_narrative_prompt_template(text: str, category: str, definitions_path: str = "data/narrative_definitions.csv") -> str:
+def create_narrative_system_prompt(category: str, definitions_path: str = "data/narrative_definitions.csv") -> str:
     """
     Create a prompt to classify text into narratives from a specific category.
     
@@ -82,15 +82,19 @@ def create_narrative_prompt_template(text: str, category: str, definitions_path:
 
 2. **Narrative Identification**: Identify ALL propaganda narratives present in the text. A single text may contain multiple narratives.
 
-3. **Evidence-Based Classification**: Base your classification on the specific definitions provided above. Look for both explicit statements and implicit messaging that aligns with narrative patterns.
+3. **Evidence-Based Classification**: Base your classification on the specific definitions provided above. Look for explicit statements that align with narrative patterns.
 
 4. **Contextual Understanding**: Consider the context, tone, and intended audience when identifying narratives.
 
-5. **Precision**: Only classify narratives that are clearly present in the text. Avoid over-interpretation or assumptions.
+5. **Precision**: Only classify narratives that are CLEARLY present in the text. Avoid over-interpretation or assumptions.
 
 ## OUTPUT FORMAT
 
 Provide your analysis in the following structured format:
+
+**POTENTIAL NARRATIVES:** First list all narratives that could potentially apply to the text, even if you are not certain they are present. This helps in understanding the range of narratives considered.
+
+**ANALYSIS:**  Expose your reasoning and the key elements that led to your classification. You may cite specific parts of the text that support your decisions. During this step, you may also mention that you found narratives you considered but ultimately did not include in the final classification.
 
 **IDENTIFIED NARRATIVES:** [narrative1; narrative2; narrative3; ...]
 
@@ -108,15 +112,11 @@ Where:
 - **Secondary Elements**: Note supporting or implicit narratives
 - **Confidence**: Only include narratives you can clearly identify with evidence from the text
 - **Completeness**: Ensure all significant narratives are captured
-
-Please analyze the following text:
-
-Text: {text}
     """
-    return prompt_template.format(text=text)
+    return prompt_template
 
 
-def create_subnarrative_prompt_template(text: str, narrative: str, definitions_path: str = "data/subnarrative_definitions.csv") -> str:
+def create_subnarrative_system_prompt(narrative: str, definitions_path: str = "data/subnarrative_definitions.csv") -> str:
     """
     Create a prompt to classify text into subnarratives for a specific narrative.
 
@@ -173,12 +173,14 @@ def create_subnarrative_prompt_template(text: str, narrative: str, definitions_p
 
 1. **Thorough Analysis**: Carefully read and analyze the entire text to understand its main themes, arguments, and underlying messages.
 2. **Subnarrative Identification**: Identify ALL propaganda subnarratives present in the text. A single text may contain multiple subnarratives.
-3. **Evidence-Based Classification**: Base your classification on the specific definitions provided above. Look for both explicit statements and implicit messaging that aligns with subnarrative patterns.
+3. **Evidence-Based Classification**: Base your classification on the specific definitions provided above. Look for both explicit statements that align with subnarrative patterns.
 4. **Contextual Understanding**: Consider the context, tone, and intended audience when identifying subnarratives.
-5. **Precision**: Only classify subnarratives that are clearly present in the text. Avoid over-interpretation or assumptions.
+5. **Precision**: Only classify subnarratives that are CLEARLY present in the text. Avoid over-interpretation or assumptions.
 
 ## OUTPUT FORMAT
 Provide your analysis in the following structured format:
+**POTENTIAL SUBNARRATIVES:** First list all subnarratives that could potentially apply to the text, even if you are not certain they are present. This helps in understanding the range of subnarratives considered.
+**ANALYSIS:** Expose your reasoning and the key elements that led to your classification. You may cite specific parts of the text that support your decisions. During this step, you may also mention that you found subnarratives you considered but ultimately did not include in the final classification.
 **IDENTIFIED SUBNARRATIVES:** [subnarrative1; subnarrative2; subnarrative3; ...]
 Where:
 - Wrap the subnarrative list in square brackets ([])
@@ -192,9 +194,5 @@ Where:
 - **Secondary Elements**: Note supporting or implicit subnarratives
 - **Confidence**: Only include subnarratives you can clearly identify with evidence from the text
 - **Completeness**: Ensure all significant subnarratives are captured
-
-
-Please analyze the following text:
-Text: {text}
     """
-    return prompt_template.format(text=text)
+    return prompt_template
