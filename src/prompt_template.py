@@ -151,6 +151,8 @@ def create_subnarrative_system_prompt(narrative: str, definitions_path: str = "d
 
     prompt_template = (
         "You are an expert propaganda narrative analyst with extensive experience in identifying and classifying manipulative communication patterns.\n"
+        "This text is known to contain the narrative: "
+        f"{narrative}\n"
         "Your task is to analyze the given text and identify which specific propaganda subnarratives are present.\n"
         "Provide your classification as a semicolon-separated list inside square brackets, e.g. [Subnarrative A; Subnarrative B].\n\n"
         "AVAILABLE SUBNARRATIVES:\n\n"
@@ -168,14 +170,14 @@ def create_subnarrative_system_prompt(narrative: str, definitions_path: str = "d
             prompt_template += f"  Instruction: {instruction}\n"
         prompt_template += "\n"
 
-    prompt_template +="""
+    prompt_template +=f"""
 ## CLASSIFICATION INSTRUCTIONS
 
 1. **Thorough Analysis**: Carefully read and analyze the entire text to understand its main themes, arguments, and underlying messages.
 2. **Subnarrative Identification**: Identify ALL propaganda subnarratives present in the text. A single text may contain multiple subnarratives.
 3. **Evidence-Based Classification**: Base your classification on the specific definitions provided above. Look for both explicit statements that align with subnarrative patterns.
 4. **Contextual Understanding**: Consider the context, tone, and intended audience when identifying subnarratives.
-5. **Precision**: Only classify subnarratives that are CLEARLY present in the text. Avoid over-interpretation or assumptions.
+5. **Precision**: Only classify subnarratives that are CLEARLY present in the text. Avoid over-interpretation or assumptions. If none of the subnarratives are clearly present, respond with '{narrative}: Other'
 
 ## OUTPUT FORMAT
 Provide your analysis in the following structured format:
