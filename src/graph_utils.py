@@ -77,7 +77,7 @@ def route_after_category(state) -> str:
     else:
         return "narratives"
 
-def route_after_validation(state: ClassificationState) -> str:
+def route_after_narrative_validation(state: ClassificationState) -> str:
     """
     Determines the next step after validation.
     - If approved or max retries reached, proceed.
@@ -85,13 +85,61 @@ def route_after_validation(state: ClassificationState) -> str:
     """
     feedback = state.get("narrative_validation_feedback")
     retry_count = state.get("narrative_retry_count", 0)
-    
-    if feedback == "approved" or retry_count >= 1: # Limit to 1 retry for now
-        if retry_count >= 1 and feedback != "approved":
+
+    max_attempts = 2  # Limit to 2 retries for now
+
+    if feedback == "approved" or retry_count >= max_attempts:  # Limit to 2 retries for now
+        if retry_count >= max_attempts and feedback != "approved":
             print("[graph] ROUTER: Max retries reached. Proceeding with last attempt.")
-        else:
-            print("[graph] ROUTER: Validation approved. Proceeding to clean narratives.")
         return "clean_narratives"
     else:
         print("[graph] ROUTER: Retrying narrative classification.")
         return "narratives"
+
+
+def route_after_narratives_classification(state: ClassificationState) -> str:
+    """
+    Determines the next step after narrative classification.
+    - If narratives list is empty after classification, go to handle_empty_narratives
+    - Otherwise, proceed to validation
+    """
+    narratives = state.get("narratives", [])
+    
+    if not narratives:
+        print("[graph] ROUTER: No narratives classified. Going to handle_empty_narratives.")
+        return "handle_empty_narratives"
+    else:
+        return "validate_narratives"
+
+
+def route_after_narratives_cleaning(state: ClassificationState) -> str:
+    """
+    Determines the next step after narrative cleaning.
+    - If narratives list is empty after cleaning, go to handle_empty_narratives
+    - Otherwise, proceed to subnarratives classification
+    """
+    narratives = state.get("narratives", [])
+    
+    if not narratives:
+        print("[graph] ROUTER: No narratives after cleaning. Going to handle_empty_narratives.")
+        return "handle_empty_narratives"
+    else:
+        return "subnarratives"
+
+def route_after_subnarrative_validation(state: ClassificationState) -> str:
+    """
+    Determines the next step after subnarrative validation.
+    """
+    feedback = state.get("subnarrative_validation_feedback")
+    retry_count = state.get("subnarrative_retry_count", 0)
+    
+    # We'll limit it to one retry for now
+    if feedback == "approved" or retry_count >= 1:
+        if retry_count >= 1 and feedback != "approved":
+            print("[graph] ROUTER: Max retries for subnarratives reached. Proceeding.")
+        else:
+            print("[graph] ROUTER: Subnarrative validation approved. Proceeding.")
+        return "clean_subnarratives"
+    else:
+        print("[graph] ROUTER: Retrying subnarrative classification.")
+        return "subnarratives"

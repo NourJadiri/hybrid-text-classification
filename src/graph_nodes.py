@@ -6,11 +6,13 @@ Extracted from graph.py for better code organization and readability.
 import json
 from typing import Any, List
 from langchain_core.messages import SystemMessage, HumanMessage
+from matplotlib import category
 from extract import extract_category
 from label_info import flatten_taxonomy
-from prompt_template import create_category_system_prompt, create_narrative_critic_prompt, create_narrative_refinement_prompt, create_narrative_system_prompt, create_subnarrative_system_prompt
+from prompt_template import create_category_system_prompt, create_narrative_critic_prompt, create_narrative_refinement_prompt, create_narrative_system_prompt, create_subnarrative_critic_prompt, create_subnarrative_refinement_prompt, create_subnarrative_system_prompt
 from schema import Narrative, NarrativeClassificationOutput, Subnarrative, SubnarrativeClassificationOutput, ValidationResult
 from graph_utils import create_other_narrative, create_other_subnarrative, write_classification_results
+from utils import get_narratives_for_category, get_subnarratives_for_narrative
 
 
 def classify_category_node(state, llm) -> dict:
@@ -77,7 +79,6 @@ def classify_narratives_node(state, llm) -> dict:
     base_system_prompt = create_narrative_system_prompt(category)
     
     if feedback and feedback != "approved":
-        print("[graph] ACTOR: This is a retry. Incorporating feedback.")
         system_prompt = create_narrative_refinement_prompt(base_system_prompt, feedback)
     else:
         system_prompt = base_system_prompt
@@ -97,21 +98,34 @@ def classify_narratives_node(state, llm) -> dict:
     print(f"[graph] Narratives classification complete -> {narrative_names}")
     return {"narratives": narratives_with_details, "narrative_retry_count": retry_count + 1}
 
+def handle_empty_narratives_node(state) -> dict:
+    """
+    Handles the case where no narratives were classified.
+    Sets subnarratives to empty list for proper handling in write_results.
+    """
+    print("[graph] No narratives classified, setting empty subnarratives.")
+    
+    return {
+        "subnarratives": []
+    }
 
-def validate_narratives_node(state, llm) -> dict:
+def validate_narratives_node(state, llm, taxonomy) -> dict:
     """
     The 'Critic' node. It validates the narratives classified by the actor.
     """
     print("[graph] CRITIC: Validating classified narratives...")
     text = state["text"]
-    narratives_analysis = state["narratives"] 
-    
+    narratives_analysis = state["narratives"]
+    category = state["category"]
+
+    potential_narratives = get_narratives_for_category(taxonomy, category)
+
     if not narratives_analysis:
         print("[graph] CRITIC: No narratives to validate. Approving.")
         return {"narrative_validation_feedback": "approved"}
 
-    system_prompt = create_narrative_critic_prompt()
-    
+    system_prompt = create_narrative_critic_prompt(potential_narratives)
+
     human_prompt = (
         f"ORIGINAL TEXT:\n---\n{text}\n---\n\n"
         f"CLASSIFICATION ANALYSIS TO VALIDATE:\n---\n{json.dumps([n.dict() for n in narratives_analysis], indent=2)}\n---"
@@ -123,10 +137,10 @@ def validate_narratives_node(state, llm) -> dict:
     verdict = critic_llm.invoke(messages)
 
     if verdict.is_valid:
-        print(f"[graph] CRITIC: Validation successful. Feedback: {verdict.feedback}")
+        print(f"[graph] CRITIC: Validation successful.")
         return {"narrative_validation_feedback": "approved"}
     else:
-        print(f"[graph] CRITIC: Validation failed. Feedback: {verdict.feedback}")
+        print(f"[graph] CRITIC: Validation failed.")
         return {"narrative_validation_feedback": verdict.feedback}
 
 
@@ -171,27 +185,69 @@ async def classify_subnarratives_node(state, llm) -> dict:
     """
     text = state["text"]
     narratives = state["narratives"]
+    retry_count = state.get("subnarrative_retry_count", 0)
+    feedback = state.get("subnarrative_validation_feedback", "")
     
-    if not narratives:
-        print("[graph] No valid narratives to process for subnarratives. Skipping.")
-        other_placeholder = create_other_subnarrative("No valid parent narratives were provided to this node.")
-        return {"subnarratives": [other_placeholder]}
+    valid_parent_narratives = [
+        n for n in narratives if n.narrative_name != "Other"
+    ]
     
-    print(f"[graph] Starting subnarratives classification node for narratives {narratives}")
-    
-    # Prepare batch messages
+    narrative_names = [n.narrative_name for n in valid_parent_narratives]
+    print(f"[graph] Starting subnarratives classification node for narratives {narrative_names}")
+
+
     structured_llm = llm.with_structured_output(SubnarrativeClassificationOutput)
-    all_messages = _prepare_subnarrative_messages(narratives, text)
+    all_messages = _prepare_subnarrative_messages(narratives, text, feedback)
     
-    # Process batch
     print("[graph] Starting the batch LLM invocation for subnarratives...")
     responses = await structured_llm.abatch(all_messages)
     print("[graph] Completed the batch LLM invocation for subnarratives.")
     
-    # Process responses
     all_subnarratives_with_details = _process_subnarrative_responses(narratives, responses)
     
-    return {"subnarratives": all_subnarratives_with_details}
+    return {"subnarratives": all_subnarratives_with_details, "subnarrative_retry_count": retry_count + 1}
+
+def validate_subnarratives_node(state, llm, taxonomy) -> dict:
+    """
+    The 'Critic' node for subnarratives. It validates the subnarratives classified by the actor.
+    """
+    print("[graph] CRITIC: Validating classified subnarratives...")
+    text = state["text"]
+    subnarratives_analysis = state["subnarratives"]
+    narratives_analysis = state["narratives"]
+    category = state["category"]
+
+    narrative_names = [n.narrative_name.split(": ")[-1] for n in narratives_analysis if n.narrative_name != "Other"]
+
+    potential_subnarratives = []
+    
+    for narrative in narrative_names:
+        subs = get_subnarratives_for_narrative(taxonomy, category, narrative)
+        potential_subnarratives.extend(subs)
+    
+    if not subnarratives_analysis:
+        print("[graph] CRITIC: No subnarratives to validate. Approving.")
+        return {"subnarrative_validation_feedback": "approved"}
+
+    system_prompt = create_subnarrative_critic_prompt(potential_subnarratives)
+    
+    human_prompt = (
+        f"ORIGINAL TEXT:\n---\n{text}\n---\n\n"
+        f"PARENT NARRATIVES:\n---\n{json.dumps([n.dict() for n in state['narratives']], indent=2)}\n---\n\n"
+        f"CLASSIFICATION ANALYSIS TO VALIDATE:\n---\n{json.dumps([s.dict() for s in subnarratives_analysis], indent=2)}\n---"
+    )
+    
+    messages = [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)]
+    
+    critic_llm = llm.with_structured_output(ValidationResult)
+    verdict = critic_llm.invoke(messages)
+
+    if verdict.is_valid:
+        print(f"[graph] CRITIC: Validation successful.")
+        return {"subnarrative_validation_feedback": "approved"}
+    else:
+        print(f"[graph] CRITIC: Validation failed.")
+        return {"subnarrative_validation_feedback": verdict.feedback}
 
 
 def clean_subnarratives_node(state, flat_subnarratives) -> dict:
@@ -228,16 +284,16 @@ def write_results_node(state, output_file) -> dict|None:
         None (end node)
     """
     file_id = state["file_id"]
-    narratives = state["narratives"]
-    subnarratives = state["subnarratives"]
+    narratives = state.get("narratives", [])
+    subnarratives = state.get("subnarratives", [])
     
     print(f"[graph] Writing results for file {file_id}")
     
     # Add "Other" placeholders if needed
-    final_subnarratives = _add_other_placeholders_if_needed(narratives, subnarratives)
+    final_narratives, final_subnarratives = _add_other_placeholders_if_needed(narratives, subnarratives)
     
     try:
-        write_classification_results(file_id, narratives, final_subnarratives, output_file)
+        write_classification_results(file_id, final_narratives, final_subnarratives, output_file)
         print(f"[graph] Results written to {output_file}")
     except Exception as e:
         print(f"[graph] Error writing results: {e}")
@@ -249,26 +305,30 @@ def write_results_node(state, output_file) -> dict|None:
 
 def _add_other_placeholders_if_needed(narratives, subnarratives):
     """
-    Add "Other" placeholders for narratives that don't have any subnarratives.
+    Add "Other" placeholders based on empty lists.
     
     Args:
         narratives: List of narrative objects
         subnarratives: List of subnarrative objects
         
     Returns:
-        Updated list of subnarratives with "Other" placeholders added as needed
+        Tuple of (final_narratives, final_subnarratives) with "Other" placeholders added as needed
     """
-    final_subnarratives = list(subnarratives)  # Copy the original list
+    final_narratives = list(narratives) if narratives else []
+    final_subnarratives = list(subnarratives) if subnarratives else []
     
-    for narrative in narratives:
-        # Check if this narrative has any subnarratives
-        has_subnarratives = any(
-            sub.subnarrative_name.startswith(narrative.narrative_name)
-            for sub in subnarratives
-        )
-        
-        if not has_subnarratives:
-            print(f"[graph] No specific subnarratives found for '{narrative.narrative_name}'. Creating 'Other' placeholder.")
+    # Case 1: If narrative list is empty, put "Other" in both narrative and subnarrative
+    if not narratives:
+        print("[graph] No narratives found. Creating 'Other' placeholders for both narratives and subnarratives.")
+        other_narrative = create_other_narrative("No narratives were classified for this text.")
+        other_subnarrative = create_other_subnarrative("No narratives were classified for this text.")
+        final_narratives = [other_narrative]
+        final_subnarratives = [other_subnarrative]
+    
+    # Case 2: If narrative list is not empty but subnarrative list is empty, add "Other" placeholders for each narrative
+    elif narratives and not subnarratives:
+        print("[graph] Narratives found but no subnarratives. Creating 'Other' placeholders for each narrative.")
+        for narrative in narratives:
             other_placeholder = Subnarrative(
                 subnarrative_name=f"{narrative.narrative_name}: Other",
                 evidence_quote="N/A",
@@ -276,14 +336,40 @@ def _add_other_placeholders_if_needed(narratives, subnarratives):
             )
             final_subnarratives.append(other_placeholder)
     
-    return final_subnarratives
+    # Case 3: Both lists have content, check for missing subnarratives per narrative
+    elif narratives and subnarratives:
+        for narrative in narratives:
+            if narrative.narrative_name == "Other":
+                continue
+            # Check if this narrative has any subnarratives
+            has_subnarratives = any(
+                sub.subnarrative_name.startswith(narrative.narrative_name)
+                for sub in subnarratives
+            )
+            
+            if not has_subnarratives:
+                print(f"[graph] No specific subnarratives found for '{narrative.narrative_name}'. Creating 'Other' placeholder.")
+                other_placeholder = Subnarrative(
+                    subnarrative_name=f"{narrative.narrative_name}: Other",
+                    evidence_quote="N/A",
+                    reasoning="No specific subnarrative found for the parent narrative."
+                )
+                final_subnarratives.append(other_placeholder)
+    
+    return final_narratives, final_subnarratives
 
 
-def _prepare_subnarrative_messages(narratives, text):
+def _prepare_subnarrative_messages(narratives, text, feedback):
     """Prepare batch messages for subnarrative classification."""
     all_messages = []
     for narrative in narratives:
-        system_prompt = create_subnarrative_system_prompt(narrative.narrative_name)
+        base_system_prompt = create_subnarrative_system_prompt(narrative.narrative_name)
+        
+        if feedback and feedback != "approved":
+            print("[graph] ACTOR: This is a retry for subnarratives. Incorporating feedback.")
+            system_prompt = create_subnarrative_refinement_prompt(base_system_prompt, feedback)
+        else:
+            system_prompt = base_system_prompt
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=text)

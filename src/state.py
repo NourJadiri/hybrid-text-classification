@@ -8,5 +8,9 @@ class ClassificationState(TypedDict):
     narratives: NotRequired[List[Any]]
     subnarratives: NotRequired[list[Any]]
     file_id: str
+    
     narrative_validation_feedback: NotRequired[str]
     narrative_retry_count: NotRequired[int]
+    
+    subnarratives_validation_feedback: NotRequired[str]
+    subnarrative_retry_count: NotRequired[int]

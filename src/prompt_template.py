@@ -230,12 +230,14 @@ Your entire response must be a single JSON object conforming to this schema:
     return prompt_template
 
 
-def create_narrative_critic_prompt() -> str:
+def create_narrative_critic_prompt(narratives) -> str:
     """Creates a system prompt for the 'Critic' agent that validates narrative classifications."""
     prompt = (
         "You are a meticulous and skeptical editor. Your task is to evaluate a classification of propaganda narratives applied to a text. "
         "You must be extremely strict. The classification is only valid if every narrative is strongly and explicitly supported by the provided evidence from the text.\n\n"
         "You will be given the original text and the classification analysis in JSON format. The analysis includes the narrative name, a quote for evidence, and reasoning.\n\n"
+        "Here are the narratives that were available for classification:\n"
+        f"{', '.join(narratives)}\n\n"
         "## EVALUATION CRITERIA (Apply Strictly):\n"
         "1. **Evidence Accuracy:** Is the `evidence_quote` an exact, verbatim quote from the original text?\n"
         "2. **Relevance of Evidence:** Does the `evidence_quote` DIRECTLY and OBVIOUSLY support the `narrative_name`? The connection must not be a stretch or require deep interpretation. If the link is weak, the classification is invalid.\n"
@@ -245,10 +247,40 @@ def create_narrative_critic_prompt() -> str:
     )
     return prompt
 
+def create_subnarrative_critic_prompt(subnarratives) -> str:
+    """Creates a system prompt for the 'Critic' agent that validates subnarrative classifications."""
+    prompt = (
+        "You are a meticulous and skeptical editor. Your task is to evaluate a classification of propaganda subnarratives applied to a text. "
+        "The list was generated under the assumption that a specific parent narrative is present."
+        "You must be extremely strict. The classification is only valid if every subnarrative is strongly and explicitly supported by the provided evidence from the text.\n\n"
+        "You will be given the original text and the classification analysis in JSON format. The analysis includes the subnarrative name, a quote for evidence, and reasoning.\n\n"
+        "Here is the list of subnarratives that were available to choose from:\n\n"
+        f"{'; '.join(subnarratives)}\n\n"
+        "## EVALUATION CRITERIA (Apply Strictly):\n"
+        "1. **Evidence Accuracy:** Is the `evidence_quote` an exact, verbatim quote from the original text?\n"
+        "2. **Relevance of Evidence:** Does the `evidence_quote` DIRECTLY and OBVIOUSLY support the `subnarrative_name`? The connection must not be a stretch or require deep interpretation. If the link is weak, the classification is invalid.\n"
+        "3. **Completeness:** Does the analysis miss any other obvious, high-confidence subnarratives that are clearly present in the text? If so, the classification is invalid.\n\n"
+        "## OUTPUT FORMAT\n"
+        "Provide your evaluation as a single, valid JSON object conforming to the specified schema. Do not include any other text or formatting."
+    )
+    return prompt
+
 def create_narrative_refinement_prompt(original_prompt: str, feedback: str) -> str:
     """Creates a system prompt for a retry, incorporating the critic's feedback."""
     refinement_header = (
         "You previously analyzed a text, but your analysis had flaws. "
+        "A meticulous editor has provided the following feedback. Your task is to re-analyze the text, incorporating this feedback to produce a new, corrected classification.\n\n"
+        "## EDITOR'S FEEDBACK TO CORRECT:\n"
+        f"{feedback}\n\n"
+        "-------------------------------------\n"
+        "## ORIGINAL TASK AND DEFINITIONS (Apply these again with the feedback in mind):\n\n"
+    )
+    return refinement_header + original_prompt
+
+def create_subnarrative_refinement_prompt(original_prompt: str, feedback: str) -> str:
+    """Creates a system prompt for a retry of subnarrative classification, incorporating the critic's feedback."""
+    refinement_header = (
+        "You previously analyzed a text for subnarratives, but your analysis had flaws. "
         "A meticulous editor has provided the following feedback. Your task is to re-analyze the text, incorporating this feedback to produce a new, corrected classification.\n\n"
         "## EDITOR'S FEEDBACK TO CORRECT:\n"
         f"{feedback}\n\n"
