@@ -17,7 +17,7 @@ def create_category_system_prompt() -> str:
         "- Output EXACTLY one label token enclosed in square brackets on the next line: [URW], [CC], or [Other].\n"
         "Classification guidance:\n"
         "- Use [URW] for topics clearly about the Russia-Ukraine conflict.\n"
-        "- Use [CC] for topics clearly about climate, global warming, greenhouse gases, emissions, climate policy, renewable energy, sea level rise, or environmental impacts.\n"
+        "- Use [CC] for topics clearly about climate change.\n"
         "- Use [Other] if neither topic is the primary focus.\n\n"
         "Exact example outputs (showing allowed formats):\n"
         "EVIDENCE: short justification\n[URW]\n\n"
@@ -73,46 +73,45 @@ def create_narrative_system_prompt(category: str, definitions_path: str = "data/
         if instruction:
             prompt_template += f"  Instruction: {instruction}\n"
         prompt_template += "\n"
+        
+    prompt_template += f"""
+    - Other : A text that does not fit any of the above narratives. Other should only be used if none of the narratives are clearly present, and should be the only narrative listed in that case.
+    """
     
 
-    prompt_template +="""
-## CLASSIFICATION INSTRUCTIONS
+    prompt_template += """
+## INSTRUCTIONS
 
-1. **Thorough Analysis**: Carefully read and analyze the entire text to understand its main themes, arguments, and underlying messages.
+Follow these two steps precisely:
 
-2. **Narrative Identification**: Identify ALL propaganda narratives present in the text. A single text may contain multiple narratives.
+**Step 1: Chain of Thought (Internal Reasoning)**
+First, think step-by-step to analyze the provided text.
+- Identify key phrases, arguments, and themes.
+- For each potential narrative from the list, consider if it applies.
+- Find a specific, direct quote from the text that serves as the strongest evidence for each narrative you believe is present.
+- Formulate a brief reasoning for why that quote supports the narrative.
+- If no narratives apply, conclude that.
 
-3. **Evidence-Based Classification**: Base your classification on the specific definitions provided above. Look for explicit statements that align with narrative patterns.
+**Step 2: Format the Final Output**
+After your internal reasoning is complete, provide your final analysis as a single, valid JSON object.
+- The JSON should be the *only* thing in your response. Do not include your chain of thought, explanations, or any markdown formatting like ```json.
 
-4. **Contextual Understanding**: Consider the context, tone, and intended audience when identifying narratives.
+## OUTPUT FORMAT (JSON Schema)
 
-5. **Precision**: Only classify narratives that are CLEARLY present in the text. Avoid over-interpretation or assumptions.
+Your entire response must be a single JSON object conforming to this schema:
+{
+  "narratives": [
+    {
+      "narrative_name": "string (The exact name from the list)",
+      "evidence_quote": "string (The direct quote from the text you found as evidence)",
+      "reasoning": "string (Your justification connecting the quote to the narrative)"
+    }
+  ]
+}
 
-## OUTPUT FORMAT
-
-Provide your analysis in the following structured format:
-
-**POTENTIAL NARRATIVES:** First list all narratives that could potentially apply to the text, even if you are not certain they are present. This helps in understanding the range of narratives considered.
-
-**ANALYSIS:**  Expose your reasoning and the key elements that led to your classification. You may cite specific parts of the text that support your decisions. During this step, you may also mention that you found narratives you considered but ultimately did not include in the final classification.
-
-**IDENTIFIED NARRATIVES:** [narrative1; narrative2; narrative3; ...]
-
-Where:
-- Wrap the narrative list in square brackets ([])
-- Each narrative should be the exact name from the categories above
-- Use semicolons (;) to separate multiple narratives
-- If no propaganda narratives are detected, respond with: [Other]
-- If multiple narratives are present, list them all
-- Maintain the exact narrative names as provided in the definitions
-
-## ANALYSIS GUIDELINES
-
-- **Primary Focus**: Identify the main propaganda narratives
-- **Secondary Elements**: Note supporting or implicit narratives
-- **Confidence**: Only include narratives you can clearly identify with evidence from the text
-- **Completeness**: Ensure all significant narratives are captured
-    """
+- If multiple narratives are found, include one object for each in the `narratives` list.
+- If no propaganda narratives are detected, respond with an empty list for the "narratives" key: `{"narratives": []}`.
+"""
     return prompt_template
 
 
@@ -170,31 +169,36 @@ def create_subnarrative_system_prompt(narrative: str, definitions_path: str = "d
             prompt_template += f"  Instruction: {instruction}\n"
         prompt_template += "\n"
 
-    prompt_template +=f"""
-## CLASSIFICATION INSTRUCTIONS
+    prompt_template += """
+## INSTRUCTIONS
 
-1. **Thorough Analysis**: Carefully read and analyze the entire text to understand its main themes, arguments, and underlying messages.
-2. **Subnarrative Identification**: Identify ALL propaganda subnarratives present in the text. A single text may contain multiple subnarratives.
-3. **Evidence-Based Classification**: Base your classification on the specific definitions provided above. Look for both explicit statements that align with subnarrative patterns.
-4. **Contextual Understanding**: Consider the context, tone, and intended audience when identifying subnarratives.
-5. **Precision**: Only classify subnarratives that are CLEARLY present in the text. Avoid over-interpretation or assumptions. If none of the subnarratives are clearly present, respond with '{narrative}: Other'
+Follow these two steps precisely:
 
-## OUTPUT FORMAT
-Provide your analysis in the following structured format:
-**POTENTIAL SUBNARRATIVES:** First list all subnarratives that could potentially apply to the text, even if you are not certain they are present. This helps in understanding the range of subnarratives considered.
-**ANALYSIS:** Expose your reasoning and the key elements that led to your classification. You may cite specific parts of the text that support your decisions. During this step, you may also mention that you found subnarratives you considered but ultimately did not include in the final classification.
-**IDENTIFIED SUBNARRATIVES:** [subnarrative1; subnarrative2; subnarrative3; ...]
-Where:
-- Wrap the subnarrative list in square brackets ([])
-- Each subnarrative should be the exact name from the categories above
-- Use semicolons (;) to separate multiple subnarratives
-- If multiple subnarratives are present, list them all
-- Maintain the exact subnarrative names as provided in the definitions
+**Step 1: Chain of Thought (Internal Reasoning)**
+First, think step-by-step to analyze the provided text.
+- Given that the text contains the parent narrative, look for more specific themes or arguments that match the subnarrative definitions.
+- For each potential subnarrative from the list, consider if it applies.
+- Find a specific, direct quote from the text that serves as the strongest evidence for each subnarrative you believe is present.
+- Formulate a brief reasoning for why that quote supports the subnarrative.
 
-## ANALYSIS GUIDELINES
-- **Primary Focus**: Identify the main propaganda subnarratives
-- **Secondary Elements**: Note supporting or implicit subnarratives
-- **Confidence**: Only include subnarratives you can clearly identify with evidence from the text
-- **Completeness**: Ensure all significant subnarratives are captured
-    """
+**Step 2: Format the Final Output**
+After your internal reasoning is complete, provide your final analysis as a single, valid JSON object.
+- The JSON should be the *only* thing in your response. Do not include your chain of thought, explanations, or any markdown formatting like ```json.
+
+## OUTPUT FORMAT (JSON Schema)
+
+Your entire response must be a single JSON object conforming to this schema:
+{
+  "subnarratives": [
+    {
+      "subnarrative_name": "string (The exact name from the list)",
+      "evidence_quote": "string (The direct quote from the text you found as evidence)",
+      "reasoning": "string (Your justification connecting the quote to the subnarrative)"
+    }
+  ]
+}
+
+- If multiple subnarratives are found, include one object for each in the `subnarratives` list.
+- If no specific subnarratives are detected, respond with an empty list for the "subnarratives" key: `{"subnarratives": []}`.
+"""
     return prompt_template

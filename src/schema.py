@@ -1,0 +1,27 @@
+from pydantic import BaseModel, Field
+from typing import List
+
+class CategoryClassification(BaseModel):
+    """The category classification for a given text."""
+    category: str = Field(description="The single most relevant category. Must be one of 'URW', 'CC', or 'Other'.")
+    reasoning: str = Field(description="A brief justification for why this category was chosen.")
+
+class Narrative(BaseModel):
+    """Represents a single identified propaganda narrative."""
+    narrative_name: str = Field(description="The exact, full name of the narrative from the provided list.")
+    evidence_quote: str = Field(description="A direct quote from the text that serves as the primary evidence for this narrative.")
+    reasoning: str = Field(description="A brief explanation of how the quote and the text's context support the chosen narrative definition.")
+
+class NarrativeClassificationOutput(BaseModel):
+    """A list of identified propaganda narratives found in the text."""
+    narratives: List[Narrative] = Field(description="A list of all propaganda narratives identified in the text. If none are found, this should be an empty list.")
+
+class Subnarrative(BaseModel):
+    """Represents a single identified propaganda subnarrative."""
+    subnarrative_name: str = Field(description="The exact, full name of the subnarrative from the provided list.")
+    evidence_quote: str = Field(description="A direct quote from the text that serves as the primary evidence for this subnarrative.")
+    reasoning: str = Field(description="A brief explanation of how the quote and the text's context support the chosen subnarrative definition.")
+
+class SubnarrativeClassificationOutput(BaseModel):
+    """A list of identified propaganda subnarratives found in the text."""
+    subnarratives: List[Subnarrative] = Field(description="A list of all propaganda subnarratives identified in the text.")
