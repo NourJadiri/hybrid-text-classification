@@ -94,7 +94,7 @@ First, think step-by-step to analyze the provided text.
 
 **Step 2: Format the Final Output**
 After your internal reasoning is complete, provide your final analysis as a single, valid JSON object.
-- The JSON should be the *only* thing in your response. Do not include your chain of thought, explanations, or any markdown formatting like ```json.
+- The JSON should be the *only* thing in your response. Do not include your chain of thought, explanations, or any markdown formatting like '```json'.
 
 ## OUTPUT FORMAT (JSON Schema)
 
@@ -183,7 +183,7 @@ First, think step-by-step to analyze the provided text.
 
 **Step 2: Format the Final Output**
 After your internal reasoning is complete, provide your final analysis as a single, valid JSON object.
-- The JSON should be the *only* thing in your response. Do not include your chain of thought, explanations, or any markdown formatting like ```json.
+- The JSON should be the *only* thing in your response. Do not include your chain of thought, explanations, or any markdown formatting like '```json'.
 
 ## OUTPUT FORMAT (JSON Schema)
 

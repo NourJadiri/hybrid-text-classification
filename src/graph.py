@@ -122,7 +122,13 @@ async def classify_subnarratives_node(state: ClassificationState) -> dict:
     
     if not narratives:
         print("[graph] No valid narratives to process for subnarratives. Skipping.")
-        return {"subnarratives": ['Other']}
+        
+        other_placeholder = Subnarrative(
+            subnarrative_name="Other",
+            evidence_quote="N/A",
+            reasoning="No valid parent narratives were provided to this node."
+        )
+        return {"subnarratives": [other_placeholder]}
     
     
     print(f"[graph] Starting subnarratives classification node for narratives {narratives}")
@@ -145,18 +151,29 @@ async def classify_subnarratives_node(state: ClassificationState) -> dict:
 
     all_subnarratives_with_details = []
 
-    for response in responses:
-        all_subnarratives_with_details.extend(response.subnarratives)
-
+    for parent_narrative, response in zip(narratives, responses):
+        if response.subnarratives:
+            all_subnarratives_with_details.extend(response.subnarratives)
+        else:
+            # If the LLM returned an empty list, create a specific "Other" placeholder
+            print(f"[graph] No specific subnarratives found for '{parent_narrative.narrative_name}'. Creating 'Other' placeholder.")
+            other_placeholder = Subnarrative(
+                subnarrative_name=f"{parent_narrative.narrative_name}: Other",
+                evidence_quote="N/A",
+                reasoning=f"No specific subnarrative found for the parent narrative."
+            )
+            all_subnarratives_with_details.append(other_placeholder)
 
     return {"subnarratives": all_subnarratives_with_details}
 
+
 def clean_subnarratives_node(state: ClassificationState) -> dict:
     subnarratives = state["subnarratives"]
+    narratives = state["narratives"]
     
     print(f"[graph] Cleaning subnarratives")
     cleaned_subnarratives = [subnarrative for subnarrative in subnarratives if subnarrative.subnarrative_name in flat_subnarratives]
-
+    
     return {"subnarratives": cleaned_subnarratives}
 
 def write_results_node(state: ClassificationState) -> dict:
@@ -221,7 +238,7 @@ config = {
 
 text_list, file_names = get_texts_in_folder("testset/EN/subtask-2-documents/")
 
-initial_states_batch = [{"text": text, "file_id": file_id} for text, file_id in zip(text_list[:10], file_names[:10])]
+initial_states_batch = [{"text": text, "file_id": file_id} for text, file_id in zip(text_list, file_names)]
 print(f"[graph] Initial states batch prepared with {len(initial_states_batch)} items.")
 
 async def main():
