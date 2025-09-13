@@ -2,7 +2,7 @@ import os
 from typing import List
 
 
-def get_texts_in_folder(folder_path: str) -> List[str]:
+def get_texts_in_folder(folder_path: str) -> tuple[List[str], List[str]]:
     """
     List all text files in the specified folder.
 

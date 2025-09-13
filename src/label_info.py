@@ -22,7 +22,7 @@ def load_taxonomy(file_path: str = "data/taxonomy.json") -> Dict[str, Dict[str, 
         print(f"Error loading taxonomy: {e}")
         return {}
 
-def flatten_taxonomy(taxonomy: dict) -> tuple[list[str], list[str]]:
+def flatten_taxonomy(taxonomy: dict) -> tuple[set[str], set[str]]:
     flat_narratives = []
     flat_subnarratives = []
 
