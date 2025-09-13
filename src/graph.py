@@ -4,6 +4,7 @@ from typing_extensions import TypedDict
 from langchain.chat_models import init_chat_model
 from langgraph.graph import StateGraph, START, END
 from label_info import flatten_taxonomy, load_taxonomy
+from state import ClassificationState
 from utils import get_texts_in_folder
 from graph_nodes import (
     classify_category_node,
@@ -12,29 +13,22 @@ from graph_nodes import (
     clean_narratives_node,
     classify_subnarratives_node,
     clean_subnarratives_node,
+    validate_narratives_node,
     write_results_node
 )
-from graph_utils import route_after_category
+from graph_utils import route_after_category, route_after_validation
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Configuration
-MODEL = "openai:gpt-5-mini"
+MODEL = "openai:gpt-5-nano"
 llm = init_chat_model(MODEL)
-OUTPUT_FILE = f"results/langgraph_results_{MODEL}_structured_output.txt"
+OUTPUT_FILE = f"results/langgraph_results_{MODEL.split(':')[1]}_structured_output_with_narratives_critique_refined_subnarrative_prompt.txt"
 
 # Load taxonomy data
 taxonomy = load_taxonomy()
 flat_narratives, flat_subnarratives = flatten_taxonomy(taxonomy)
-
-class ClassificationState(TypedDict):
-    """State schema for text classification workflow"""
-    text: str
-    category: NotRequired[str]
-    narratives: NotRequired[List[Any]]
-    subnarratives: NotRequired[list[Any]]
-    file_id: str
 
 
 # Wrapper functions to inject dependencies into node functions
@@ -49,6 +43,9 @@ def _handle_other_category_node(state: ClassificationState) -> dict:
 def _classify_narratives_node(state: ClassificationState) -> dict:
     return classify_narratives_node(state, llm)
 
+def _validate_narratives_node(state: ClassificationState) -> dict:
+    return validate_narratives_node(state, llm)
+
 
 def _clean_narratives_node(state: ClassificationState) -> dict:
     return clean_narratives_node(state, flat_narratives)
@@ -62,7 +59,7 @@ def _clean_subnarratives_node(state: ClassificationState) -> dict:
     return clean_subnarratives_node(state, flat_subnarratives)
 
 
-def _write_results_node(state: ClassificationState) -> dict:
+def _write_results_node(state: ClassificationState) -> dict|None:
     return write_results_node(state, OUTPUT_FILE)
 
 
@@ -75,6 +72,7 @@ def create_classification_graph():
     # Add nodes using wrapper functions
     builder.add_node("categories", _classify_category_node)
     builder.add_node("narratives", _classify_narratives_node)
+    builder.add_node("validate_narratives", _validate_narratives_node)
     builder.add_node("clean_narratives", _clean_narratives_node)
     builder.add_node("subnarratives", _classify_subnarratives_node)
     builder.add_node("clean_subnarratives", _clean_subnarratives_node)
@@ -84,7 +82,10 @@ def create_classification_graph():
     # Define graph flow
     builder.add_edge(START, "categories")
     builder.add_conditional_edges("categories", route_after_category)
-    builder.add_edge("narratives", "clean_narratives")
+    
+    builder.add_edge("narratives", "validate_narratives")
+    builder.add_conditional_edges("validate_narratives", route_after_validation)
+    
     builder.add_edge("clean_narratives", "subnarratives")
     builder.add_edge("subnarratives", "clean_subnarratives")
     builder.add_edge("handle_other_category", "write_results")

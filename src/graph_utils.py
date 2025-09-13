@@ -1,10 +1,6 @@
-"""
-Utility functions for the LangGraph classification pipeline.
-Contains helper functions for creating placeholders and handling results.
-"""
-
 from typing import List
 from schema import Narrative, Subnarrative
+from state import ClassificationState
 
 
 def create_other_narrative(reasoning: str = "N/A") -> Narrative:
@@ -79,4 +75,23 @@ def route_after_category(state) -> str:
     if category == "Other":
         return "handle_other_category"
     else:
+        return "narratives"
+
+def route_after_validation(state: ClassificationState) -> str:
+    """
+    Determines the next step after validation.
+    - If approved or max retries reached, proceed.
+    - Otherwise, loop back to the actor for a retry.
+    """
+    feedback = state.get("narrative_validation_feedback")
+    retry_count = state.get("narrative_retry_count", 0)
+    
+    if feedback == "approved" or retry_count >= 1: # Limit to 1 retry for now
+        if retry_count >= 1 and feedback != "approved":
+            print("[graph] ROUTER: Max retries reached. Proceeding with last attempt.")
+        else:
+            print("[graph] ROUTER: Validation approved. Proceeding to clean narratives.")
+        return "clean_narratives"
+    else:
+        print("[graph] ROUTER: Retrying narrative classification.")
         return "narratives"

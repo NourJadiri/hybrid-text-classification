@@ -159,15 +159,20 @@ def create_subnarrative_system_prompt(narrative: str, definitions_path: str = "d
 
     for subnarrative in prefixed_subnarratives:
         prompt_template += f"- {subnarrative}\n"
-        definition = definitions.get(subnarrative, {}).get('definition', 'No definition available.')
+        definition = definitions.get(subnarrative, {}).get('definition', '')
         example = definitions.get(subnarrative, {}).get('example', '')
         instruction = definitions.get(subnarrative, {}).get('instruction', '')
-        prompt_template += f"  Definition: {definition}\n"
+        prompt_template += f"  Definition: {definition}\n" if definition else ""
         if example:
             prompt_template += f"  Example: {example}\n"
         if instruction:
             prompt_template += f"  Instruction: {instruction}\n"
         prompt_template += "\n"
+    
+    prompt_template += (
+        f"- {narrative}: Other\n"
+        "  Definition: Use this option if you find statements that clearly support the parent narrative but do not fit into any of the more specific subnarrative definitions provided above. This can be used IN ADDITION to other specific subnarratives.\n\n"
+    )
 
     prompt_template += """
 ## INSTRUCTIONS
@@ -181,9 +186,30 @@ First, think step-by-step to analyze the provided text.
 - Find a specific, direct quote from the text that serves as the strongest evidence for each subnarrative you believe is present.
 - Formulate a brief reasoning for why that quote supports the subnarrative.
 
-**Step 2: Format the Final Output**
+**Step 2: Check for a Remainder**
+After identifying all the specific subnarratives, re-read the text. Ask yourself: "Are there any other phrases or arguments that support the parent narrative but were NOT used as evidence for the specific subnarratives I already found?"
+
+**Step 3: Add "Other" if Necessary**
+If the answer to Step 2 is YES, you MUST ALSO include the `{narrative}: Other` subnarrative in your final list.
+
+**Step 4: Format the Final Output**
 After your internal reasoning is complete, provide your final analysis as a single, valid JSON object.
 - The JSON should be the *only* thing in your response. Do not include your chain of thought, explanations, or any markdown formatting like '```json'.
+
+## EXAMPLE OF CORRECT LOGIC
+
+- **Text says:** "Climate activists are just alarmist children. Their funding is also very suspicious."
+- **Parent Narrative:** `CC: Criticism of climate movement`
+- **Your Analysis:**
+  - "Climate activists are just alarmist children" matches `...: Climate movement is alarmist`.
+  - "Their funding is also very suspicious" supports the parent narrative but doesn't match any specific subnarrative. This is a remainder.
+- **Correct Output:** A list containing BOTH `...: Climate movement is alarmist` AND `CC: Criticism of climate movement: Other`.
+
+## Guidelines for using "...: Other"
+
+- **DO** include `...: Other` alongside specific subnarratives if there is distinct, leftover evidence supporting the parent narrative.
+- **DO NOT** include `...: Other` if all the evidence supporting the parent narrative has already been neatly captured by the specific subnarrative(s) you identified. In this case, the classification is complete without it.
+- **DO** use `...: Other` as the sole entry if the text supports the parent narrative but does not align with any of the specific definitions.
 
 ## OUTPUT FORMAT (JSON Schema)
 
@@ -202,3 +228,31 @@ Your entire response must be a single JSON object conforming to this schema:
 - If no specific subnarratives are detected, respond with an empty list for the "subnarratives" key: `{"subnarratives": []}`.
 """
     return prompt_template
+
+
+def create_narrative_critic_prompt() -> str:
+    """Creates a system prompt for the 'Critic' agent that validates narrative classifications."""
+    prompt = (
+        "You are a meticulous and skeptical editor. Your task is to evaluate a classification of propaganda narratives applied to a text. "
+        "You must be extremely strict. The classification is only valid if every narrative is strongly and explicitly supported by the provided evidence from the text.\n\n"
+        "You will be given the original text and the classification analysis in JSON format. The analysis includes the narrative name, a quote for evidence, and reasoning.\n\n"
+        "## EVALUATION CRITERIA (Apply Strictly):\n"
+        "1. **Evidence Accuracy:** Is the `evidence_quote` an exact, verbatim quote from the original text?\n"
+        "2. **Relevance of Evidence:** Does the `evidence_quote` DIRECTLY and OBVIOUSLY support the `narrative_name`? The connection must not be a stretch or require deep interpretation. If the link is weak, the classification is invalid.\n"
+        "3. **Completeness:** Does the analysis miss any other obvious, high-confidence narratives that are clearly present in the text? If so, the classification is invalid.\n\n"
+        "## OUTPUT FORMAT\n"
+        "Provide your evaluation as a single, valid JSON object conforming to the specified schema. Do not include any other text or formatting."
+    )
+    return prompt
+
+def create_narrative_refinement_prompt(original_prompt: str, feedback: str) -> str:
+    """Creates a system prompt for a retry, incorporating the critic's feedback."""
+    refinement_header = (
+        "You previously analyzed a text, but your analysis had flaws. "
+        "A meticulous editor has provided the following feedback. Your task is to re-analyze the text, incorporating this feedback to produce a new, corrected classification.\n\n"
+        "## EDITOR'S FEEDBACK TO CORRECT:\n"
+        f"{feedback}\n\n"
+        "-------------------------------------\n"
+        "## ORIGINAL TASK AND DEFINITIONS (Apply these again with the feedback in mind):\n\n"
+    )
+    return refinement_header + original_prompt

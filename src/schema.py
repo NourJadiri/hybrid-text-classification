@@ -11,6 +11,9 @@ class Narrative(BaseModel):
     narrative_name: str = Field(description="The exact, full name of the narrative from the provided list.")
     evidence_quote: str = Field(description="A direct quote from the text that serves as the primary evidence for this narrative.")
     reasoning: str = Field(description="A brief explanation of how the quote and the text's context support the chosen narrative definition.")
+    
+    def __str__(self) -> str:
+        return self.narrative_name
 
 class NarrativeClassificationOutput(BaseModel):
     """A list of identified propaganda narratives found in the text."""
@@ -21,7 +24,14 @@ class Subnarrative(BaseModel):
     subnarrative_name: str = Field(description="The exact, full name of the subnarrative from the provided list.")
     evidence_quote: str = Field(description="A direct quote from the text that serves as the primary evidence for this subnarrative.")
     reasoning: str = Field(description="A brief explanation of how the quote and the text's context support the chosen subnarrative definition.")
+    def __str__(self) -> str:
+        return self.subnarrative_name
 
 class SubnarrativeClassificationOutput(BaseModel):
     """A list of identified propaganda subnarratives found in the text."""
     subnarratives: List[Subnarrative] = Field(description="A list of all propaganda subnarratives identified in the text.")
+    
+class ValidationResult(BaseModel):
+    """The verdict from the validation agent."""
+    is_valid: bool = Field(description="True if the classification is accurate and well-supported, False otherwise.")
+    feedback: str = Field(description="Detailed, constructive feedback. If invalid, explain what is wrong (e.g., wrong evidence, missed narrative) and how to fix it. If valid, state that it's correct.")
