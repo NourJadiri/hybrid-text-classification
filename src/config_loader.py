@@ -24,12 +24,16 @@ class ClassificationConfig:
     # Granular validation flags (optional - override global setting)
     enable_narrative_validation: Optional[bool] = None
     enable_subnarrative_validation: Optional[bool] = None
+
+    # Optional text cleaning stage
+    enable_text_cleaning: bool = False
     
     max_concurrency: int = 20
     
     category: Optional[Dict[str, Any]] = None
     narratives: Optional[Dict[str, Any]] = None
     subnarratives: Optional[Dict[str, Any]] = None
+    cleaning: Optional[Dict[str, Any]] = None
     
     @classmethod
     def from_yaml(cls, config_path: Path) -> 'ClassificationConfig':
@@ -66,7 +70,9 @@ class ClassificationConfig:
             narratives=yaml_data.get('narratives'),
             subnarratives=yaml_data.get('subnarratives'),
             enable_narrative_validation=yaml_data.get('enable_narrative_validation'),
-            enable_subnarrative_validation=yaml_data.get('enable_subnarrative_validation')
+            enable_subnarrative_validation=yaml_data.get('enable_subnarrative_validation'),
+            enable_text_cleaning=yaml_data.get('enable_text_cleaning', False),
+            cleaning=yaml_data.get('cleaning')
         )
     
     def validate(self) -> None:
@@ -121,9 +127,9 @@ class ClassificationConfig:
     def __str__(self) -> str:
         """String representation of the configuration."""
         per_node_info = ""
-        if self.category or self.narratives or self.subnarratives:
+        if self.category or self.narratives or self.subnarratives or self.cleaning:
             per_node_info = "\n  Per-node models:"
-            for node in ['category', 'narratives', 'subnarratives']:
+            for node in ['category', 'narratives', 'subnarratives', 'cleaning']:
                 node_config = getattr(self, node, None)
                 if node_config:
                     per_node_info += f"\n    {node}: {node_config}"

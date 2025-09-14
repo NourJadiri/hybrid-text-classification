@@ -12,6 +12,7 @@ from config_loader import ClassificationConfig
 from label_info import flatten_taxonomy, load_taxonomy
 from state import ClassificationState
 from graph_nodes import (
+    clean_text_node,
     classify_category_node,
     handle_other_category_node,
     classify_narratives_node,
@@ -51,12 +52,18 @@ class ConfigurableGraphBuilder:
         print(f"  Global Validation: {config.enable_validation}")
         print(f"  Narrative Validation: {config.is_narrative_validation_enabled()}")
         print(f"  Subnarrative Validation: {config.is_subnarrative_validation_enabled()}")
-        print(f"  Cleaning: {config.enable_cleaning}")
+        print(f"  Label Cleaning: {config.enable_cleaning}")
+        print(f"  Text Cleaning: {config.enable_text_cleaning}")
         self._print_model_assignments()
     
     def _initialize_llms(self, config: ClassificationConfig) -> Dict[str, Any]:
         """Initialize LLMs for each node type and operation."""
         llms = {}
+        
+        # Cleaning (text preprocessing)
+        llms['cleaning_classification'] = init_chat_model(
+            config.get_model_for_node('cleaning', 'classification')
+        )
         
         llms['category_classification'] = init_chat_model(
             config.get_model_for_node('category', 'classification')
@@ -90,6 +97,12 @@ class ConfigurableGraphBuilder:
             model_name = getattr(llm, 'model_name', getattr(llm, 'model', str(llm)))
             print(f"  {node_type.capitalize()} {operation}: {model_name}")
     
+    def _create_clean_text_node(self):
+        """Create text cleaning node wrapper."""
+        def _clean_text_node(state: ClassificationState) -> dict:
+            return clean_text_node(state, self.llms['cleaning_classification'])
+        return _clean_text_node
+
     def _create_category_node(self):
         """Create category classification node wrapper."""
         def _classify_category_node(state: ClassificationState) -> dict:
@@ -212,6 +225,10 @@ class ConfigurableGraphBuilder:
         
         builder = StateGraph(ClassificationState)
         
+        # Optional text cleaning stage
+        if self.config.enable_text_cleaning:
+            builder.add_node("clean_text", self._create_clean_text_node())
+        
         builder.add_node("categories", self._create_category_node())
         builder.add_node("handle_other_category", self._create_other_category_node())
         builder.add_node("handle_empty_narratives", self._create_empty_narratives_node())
@@ -244,7 +261,11 @@ class ConfigurableGraphBuilder:
         """Build the graph flow based on configuration."""
         routing_functions = self._create_routing_functions()
         
-        builder.add_edge(START, "categories")
+        if self.config.enable_text_cleaning:
+            builder.add_edge(START, "clean_text")
+            builder.add_edge("clean_text", "categories")
+        else:
+            builder.add_edge(START, "categories")
         builder.add_conditional_edges("categories", routing_functions["route_after_category"])
         
         builder.add_edge("handle_other_category", "write_results")

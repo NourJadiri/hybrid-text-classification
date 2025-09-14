@@ -296,3 +296,17 @@ def create_subnarrative_refinement_prompt(original_prompt: str, feedback: str) -
         "## ORIGINAL TASK AND DEFINITIONS (Apply these again with the feedback in mind):\n\n"
     )
     return refinement_header + original_prompt
+
+
+def create_cleaning_system_prompt() -> str:
+    """System prompt to clean raw web text by removing page noise.
+    The model must return ONLY the cleaned text with no extra commentary.
+    """
+    return (
+        "You are a precise text cleaner. Your job is to clean raw text scraped from the web by removing UI noise and boilerplate while preserving the article's content.\n\n"
+        "STRICT RULES (follow exactly):\n"
+        "- REMOVE: navigation menus, cookie banners, sign-up banners, button labels (e.g., 'Accept', 'Subscribe', 'Read more'), share widgets, headers/footers, unrelated CTAs, legal disclaimers, pagination artifacts, and unrelated links.\n"
+        "- KEEP: the main article or post content only. Preserve sentence order, punctuation, and language.\n"
+        "- DO NOT paraphrase or summarize. Do not add or remove meaning.\n"
+        "- OUTPUT: Return ONLY the cleaned text with no additional commentary, headings, or JSON."
+    )

@@ -6,13 +6,23 @@ Extracted from graph.py for better code organization and readability.
 import json
 from typing import Any, List
 from langchain_core.messages import SystemMessage, HumanMessage
-from matplotlib import category
 from extract import extract_category
-from label_info import flatten_taxonomy
-from prompt_template import create_category_system_prompt, create_narrative_critic_prompt, create_narrative_refinement_prompt, create_narrative_system_prompt, create_subnarrative_critic_prompt, create_subnarrative_refinement_prompt, create_subnarrative_system_prompt
-from schema import Narrative, NarrativeClassificationOutput, Subnarrative, SubnarrativeClassificationOutput, ValidationResult
+from prompt_template import create_category_system_prompt, create_narrative_critic_prompt, create_narrative_refinement_prompt, create_narrative_system_prompt, create_subnarrative_critic_prompt, create_subnarrative_refinement_prompt, create_subnarrative_system_prompt, create_cleaning_system_prompt
+from schema import NarrativeClassificationOutput, Subnarrative, SubnarrativeClassificationOutput, ValidationResult
 from graph_utils import create_other_narrative, create_other_subnarrative, write_classification_results
 from utils import get_narratives_for_category, get_subnarratives_for_narrative
+
+
+def clean_text_node(state, llm) -> dict:
+    """Clean raw web text by removing UI noise and boilerplate using an LLM."""
+    raw_text = state["text"]
+    print("[graph] Starting text cleaning node")
+    system_prompt = create_cleaning_system_prompt()
+    messages = [SystemMessage(content=system_prompt), HumanMessage(content=raw_text)]
+    response = llm.invoke(messages)
+    cleaned = (response.content or "").strip()
+    print(f"[graph] Text cleaning complete (length in/out: {len(raw_text)} -> {len(cleaned)})")
+    return {"cleaned_text": cleaned}
 
 
 def classify_category_node(state, llm) -> dict:
@@ -26,7 +36,7 @@ def classify_category_node(state, llm) -> dict:
     Returns:
         Dictionary with the classification result
     """
-    text = state["text"]
+    text = state.get("cleaned_text", state["text"])  # use cleaned text if available
     print("[graph] Starting category classification node")
     
     system_prompt = create_category_system_prompt()
@@ -69,7 +79,7 @@ def classify_narratives_node(state, llm) -> dict:
     Returns:
         Dictionary with the narrative classification results
     """
-    text = state["text"]
+    text = state.get("cleaned_text", state["text"])  # use cleaned text if available
     category = state["category"]
     retry_count = state.get("narrative_retry_count", 0)
     feedback = state.get("narrative_validation_feedback", "")
@@ -114,7 +124,7 @@ def validate_narratives_node(state, llm, taxonomy) -> dict:
     The 'Critic' node. It validates the narratives classified by the actor.
     """
     print("[graph] CRITIC: Validating classified narratives...")
-    text = state["text"]
+    text = state.get("cleaned_text", state["text"])  # use cleaned text if available
     narratives_analysis = state["narratives"]
     category = state["category"]
 
@@ -183,7 +193,7 @@ async def classify_subnarratives_node(state, llm) -> dict:
     Returns:
         Dictionary with the subnarrative classification results
     """
-    text = state["text"]
+    text = state.get("cleaned_text", state["text"])  # use cleaned text if available
     narratives = state["narratives"]
     retry_count = state.get("subnarrative_retry_count", 0)
     feedback = state.get("subnarrative_validation_feedback", "")
@@ -212,7 +222,7 @@ def validate_subnarratives_node(state, llm, taxonomy) -> dict:
     The 'Critic' node for subnarratives. It validates the subnarratives classified by the actor.
     """
     print("[graph] CRITIC: Validating classified subnarratives...")
-    text = state["text"]
+    text = state.get("cleaned_text", state["text"])  # use cleaned text if available
     subnarratives_analysis = state["subnarratives"]
     narratives_analysis = state["narratives"]
     category = state["category"]
