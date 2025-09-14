@@ -73,10 +73,6 @@ def create_narrative_system_prompt(category: str, definitions_path: str = "data/
         if instruction:
             prompt_template += f"  Instruction: {instruction}\n"
         prompt_template += "\n"
-        
-    prompt_template += f"""
-    - Other : A text that does not fit any of the above narratives. Other should only be used if none of the narratives are clearly present, and should be the only narrative listed in that case.
-    """
     
 
     prompt_template += """
@@ -106,9 +102,9 @@ Your entire response MUST be a single JSON object. ALL fields in the schema belo
 {
   "narratives": [
     {
-      "narrative_name": "string (REQUIRED)",
-      "evidence_quote": "string (REQUIRED)",
-      "reasoning": "string (REQUIRED - A brief justification is mandatory)"
+      "narrative_name": "string (The exact name from the list)",
+      "evidence_quote": "string (The direct quote from the text you found as evidence)",
+      "reasoning": "string (Your justification connecting the quote to the narrative)"
     }
   ]
 }
@@ -225,9 +221,9 @@ Your entire response MUST be a single JSON object. ALL fields in the schema belo
 {
   "narratives": [
     {
-      "subnarrative_name": "string (REQUIRED)",
-      "evidence_quote": "string (REQUIRED)",
-      "reasoning": "string (REQUIRED - A brief justification is mandatory)"
+      "subnarrative_name": "string (The exact name from the list)",
+      "evidence_quote": "string (The direct quote from the text you found as evidence)",
+      "reasoning": "string (Your justification connecting the quote to the narrative)"
     }
   ]
 }
@@ -247,8 +243,8 @@ def create_narrative_critic_prompt(narratives) -> str:
         "Here are the narratives that were available for classification:\n"
         f"{', '.join(narratives)}\n\n"
         "## EVALUATION CRITERIA (Apply Strictly):\n"
-        "1. **Evidence Accuracy:** Is the `evidence_quote` an exact, verbatim quote from the original text?\n"
-        "2. **Relevance of Evidence:** Does the `evidence_quote` DIRECTLY and OBVIOUSLY support the `narrative_name`? The connection must not be a stretch or require deep interpretation. If the link is weak, the classification is invalid.\n"
+        "1. **Evidence Accuracy:** Is the `evidence_quote` an exact, verbatim quote from the original text? Of course if the quote is from the text but there was just a small formatting / typography issue it is still fine (not the same unicode character used for example).\n"
+        "2. **Relevance of Evidence:** Does the `evidence_quote` DIRECTLY support the `narrative_name`? The connection must not be a stretch or require deep interpretation. If the link is weak, the classification is invalid.\n"
         "3. **Completeness:** Does the analysis miss any other obvious, high-confidence narratives that are clearly present in the text? If so, the classification is invalid.\n\n"
         "## OUTPUT FORMAT\n"
         "Provide your evaluation as a single, valid JSON object conforming to the specified schema. Do not include any other text or formatting."

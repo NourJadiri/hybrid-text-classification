@@ -6,10 +6,12 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
+from typing import cast
 
 from config_loader import ClassificationConfig, create_example_config
 from graph_builder import build_graph_from_config
 from utils import get_unprocessed_texts
+from state import ClassificationState
 
 
 async def run_classification(config_path: str) -> None:
@@ -48,7 +50,9 @@ async def run_classification(config_path: str) -> None:
         output_path = Path(config.output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        await graph.abatch(initial_states_batch, config=execution_config)
+        # Type cast for compatibility - runtime behavior is correct
+        typed_states = cast(list[ClassificationState], initial_states_batch)
+        await graph.abatch(typed_states, config=execution_config)  # type: ignore[arg-type]
         
         print(f"[Main] Classification completed successfully!")
         print(f"[Main] Results saved to: {config.output_file}")

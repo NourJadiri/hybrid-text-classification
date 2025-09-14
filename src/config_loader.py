@@ -59,10 +59,18 @@ class ClassificationConfig:
             if field not in yaml_data:
                 raise ValueError(f"Required field '{field}' missing from configuration")
         
+        # Allow templated output_file using placeholders like {model_name} or {model}
+        raw_output = yaml_data['output_file']
+        # sanitize model name for filesystem use
+        raw_model = yaml_data['model_name']
+        safe_model = raw_model.replace(':', '_').replace('/', '-').replace(' ', '-')
+        # support both {model_name} and {model} placeholders
+        formatted_output = raw_output.format(model_name=safe_model, model=safe_model)
+
         return cls(
             model_name=yaml_data['model_name'],
             input_folder=yaml_data['input_folder'],
-            output_file=yaml_data['output_file'],
+            output_file=formatted_output,
             enable_validation=yaml_data.get('enable_validation', True),
             enable_cleaning=yaml_data.get('enable_cleaning', True),
             max_concurrency=yaml_data.get('max_concurrency', 20),

@@ -299,11 +299,8 @@ def write_results_node(state, output_file) -> dict|None:
     
     print(f"[graph] Writing results for file {file_id}")
     
-    # Add "Other" placeholders if needed
-    final_narratives, final_subnarratives = _add_other_placeholders_if_needed(narratives, subnarratives)
-    
     try:
-        write_classification_results(file_id, final_narratives, final_subnarratives, output_file)
+        write_classification_results(file_id, narratives, subnarratives, output_file)
         print(f"[graph] Results written to {output_file}")
     except Exception as e:
         print(f"[graph] Error writing results: {e}")
@@ -312,62 +309,6 @@ def write_results_node(state, output_file) -> dict|None:
 
 
 # Private helper functions
-
-def _add_other_placeholders_if_needed(narratives, subnarratives):
-    """
-    Add "Other" placeholders based on empty lists.
-    
-    Args:
-        narratives: List of narrative objects
-        subnarratives: List of subnarrative objects
-        
-    Returns:
-        Tuple of (final_narratives, final_subnarratives) with "Other" placeholders added as needed
-    """
-    final_narratives = list(narratives) if narratives else []
-    final_subnarratives = list(subnarratives) if subnarratives else []
-    
-    # Case 1: If narrative list is empty, put "Other" in both narrative and subnarrative
-    if not narratives:
-        print("[graph] No narratives found. Creating 'Other' placeholders for both narratives and subnarratives.")
-        other_narrative = create_other_narrative("No narratives were classified for this text.")
-        other_subnarrative = create_other_subnarrative("No narratives were classified for this text.")
-        final_narratives = [other_narrative]
-        final_subnarratives = [other_subnarrative]
-    
-    # Case 2: If narrative list is not empty but subnarrative list is empty, add "Other" placeholders for each narrative
-    elif narratives and not subnarratives:
-        print("[graph] Narratives found but no subnarratives. Creating 'Other' placeholders for each narrative.")
-        for narrative in narratives:
-            other_placeholder = Subnarrative(
-                subnarrative_name=f"{narrative.narrative_name}: Other",
-                evidence_quote="N/A",
-                reasoning="No specific subnarrative found for the parent narrative."
-            )
-            final_subnarratives.append(other_placeholder)
-    
-    # Case 3: Both lists have content, check for missing subnarratives per narrative
-    elif narratives and subnarratives:
-        for narrative in narratives:
-            if narrative.narrative_name == "Other":
-                continue
-            # Check if this narrative has any subnarratives
-            has_subnarratives = any(
-                sub.subnarrative_name.startswith(narrative.narrative_name)
-                for sub in subnarratives
-            )
-            
-            if not has_subnarratives:
-                print(f"[graph] No specific subnarratives found for '{narrative.narrative_name}'. Creating 'Other' placeholder.")
-                other_placeholder = Subnarrative(
-                    subnarrative_name=f"{narrative.narrative_name}: Other",
-                    evidence_quote="N/A",
-                    reasoning="No specific subnarrative found for the parent narrative."
-                )
-                final_subnarratives.append(other_placeholder)
-    
-    return final_narratives, final_subnarratives
-
 
 def _prepare_subnarrative_messages(narratives, text, feedback):
     """Prepare batch messages for subnarrative classification."""
