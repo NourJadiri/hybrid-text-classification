@@ -1,19 +1,17 @@
 """
 Main LangGraph workflow for the translation pipeline.
 """
-import os
 from langgraph.graph import StateGraph, START, END
 from langchain.chat_models import init_chat_model
 from dotenv import load_dotenv
 import functools
 
-from .state import TranslationState
-from .nodes import clean_text_node, translation_node, file_writing_node
+from state import TranslationState
+from nodes import clean_text_node, translation_node, file_writing_node
 
 load_dotenv()
 
-# Initialize LLM (GPT-4o as requested)
-llm = init_chat_model("gpt-4o", model_provider="openai")
+llm = init_chat_model("google_genai:gemini-2.5-flash")
 
 
 def _clean_text_node(state: TranslationState) -> dict:

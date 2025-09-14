@@ -1,0 +1,9 @@
+model_name: "google_genai:gemini-2.5-flash"
+
+input_folder: "testset/EN/subtask-2-documents/"
+output_file: "outputs/{model_name}/results.json"
+
+enable_narrative_validation: false
+enable_subnarrative_validation: false
+
+max_concurrency: 10

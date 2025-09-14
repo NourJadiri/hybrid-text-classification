@@ -1,15 +1,45 @@
 """
 Main script to run the translation and consolidation pipeline for subtask-2.
 """
+from getpass import getpass
 import os
 import asyncio
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Set, cast
 
-from .graph import create_translation_graph
-from .nodes import determine_language_and_translation_need
-from .annotations import load_all_annotations, write_consolidated_annotations
+from graph import create_translation_graph
+from nodes import determine_language_and_translation_need
+from annotations import load_all_annotations, write_consolidated_annotations
+from state import TranslationState
 
+if not os.environ.get("GOOGLE_API_KEY"):
+  os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter API key for Google Gemini: ")
+
+
+def get_processed_files(output_folder: str) -> Set[str]:
+    """
+    Get a set of already processed file IDs by checking the output folder.
+    
+    Args:
+        output_folder: Path to the output folder containing translated files
+        
+    Returns:
+        Set of file IDs that have already been processed
+    """
+    processed_files = set()
+    try:
+        if os.path.exists(output_folder):
+            for filename in os.listdir(output_folder):
+                if filename.endswith('.txt') and filename != 'subtask-2-annotations.txt':
+                    file_id = filename[:-4]  # Remove .txt extension
+                    processed_files.add(file_id)
+            print(f"[batch] Found {len(processed_files)} already processed files")
+        else:
+            print(f"[batch] Output folder {output_folder} does not exist, processing all files")
+    except Exception as e:
+        print(f"[batch] Error checking processed files in {output_folder}: {e}")
+    
+    return processed_files
 
 def get_all_text_files(data_folder: str) -> List[Tuple[str, str, str]]:
     """
@@ -52,19 +82,26 @@ def read_text_file(file_path: str) -> str:
         return ""
 
 
-def prepare_initial_states(text_files: List[Tuple[str, str, str]]) -> List[dict]:
+def prepare_initial_states(text_files: List[Tuple[str, str, str]], processed_files: Set[str]) -> List[dict]:
     """
-    Prepare initial states for batch processing.
+    Prepare initial states for batch processing, skipping already processed files.
     
     Args:
         text_files: List of (file_path, file_id, source_language) tuples
+        processed_files: Set of file IDs that have already been processed
         
     Returns:
         List of initial states for the graph
     """
     initial_states = []
+    skipped_count = 0
     
     for file_path, file_id, source_language in text_files:
+        # Skip if already processed
+        if file_id in processed_files:
+            skipped_count += 1
+            continue
+            
         text_content = read_text_file(file_path)
         if not text_content:
             print(f"[batch] Skipping empty file: {file_path}")
@@ -78,6 +115,8 @@ def prepare_initial_states(text_files: List[Tuple[str, str, str]]) -> List[dict]
         initial_states.append(initial_state)
     
     print(f"[batch] Prepared {len(initial_states)} initial states for processing")
+    if skipped_count > 0:
+        print(f"[batch] Skipped {skipped_count} already processed files")
     return initial_states
 
 
@@ -112,23 +151,27 @@ async def main():
     
     print(f"[batch] Processing {len(files_with_annotations)} files with subtask-2 annotations")
     
-    # Step 5: Prepare initial states for batch processing
-    initial_states = prepare_initial_states(files_with_annotations)
+    # Step 5: Check for already processed files
+    processed_files = get_processed_files(OUTPUT_FOLDER)
+    
+    # Step 6: Prepare initial states for batch processing (excluding already processed)
+    initial_states = prepare_initial_states(files_with_annotations, processed_files)
     
     if not initial_states:
-        print("[batch] No files to process. Exiting.")
+        print("[batch] No new files to process. All files already processed or no files found.")
         return
     
-    # Step 6: Create the translation graph
+    # Step 7: Create the translation graph
     translation_graph = create_translation_graph(OUTPUT_FOLDER)
     
-    # Step 7: Process all files in batch
+    # Step 8: Process all files in batch
     print(f"[batch] Starting batch processing of {len(initial_states)} files...")
     
-    config = {"max_concurrency": 6}  # Similar to your H3Prompting config
+    # Cast for type safety
+    typed_states = cast(List[TranslationState], initial_states)
     
     try:
-        results = await translation_graph.abatch(initial_states, config=config)
+        results = await translation_graph.abatch(typed_states)  # type: ignore[arg-type]
         print(f"[batch] Batch processing completed. Processed {len(results)} files.")
         
         # Count successful vs failed

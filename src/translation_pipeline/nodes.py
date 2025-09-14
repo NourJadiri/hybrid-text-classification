@@ -4,7 +4,7 @@ Graph nodes for the LangGraph translation pipeline.
 import os
 from pathlib import Path
 from langchain_core.messages import SystemMessage, HumanMessage
-from .state import TranslationState
+from state import TranslationState
 
 
 def clean_text_node(state: TranslationState, llm) -> dict:
@@ -79,7 +79,9 @@ Target language: English"""
 def file_writing_node(state: TranslationState, output_folder: str) -> dict:
     """Write the translated/cleaned text to the output folder."""
     file_id = state["file_id"]
-    translated_text = state["translated_text"]
+    
+    # Get the text to write (prioritize translated_text, then cleaned_text, then original text)
+    text_to_write = state.get("translated_text", state.get("cleaned_text", state["text"]))
     
     # Ensure output folder exists
     os.makedirs(output_folder, exist_ok=True)
@@ -91,7 +93,7 @@ def file_writing_node(state: TranslationState, output_folder: str) -> dict:
     print(f"[translation] Writing {file_id} to {output_path}")
     
     with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(translated_text)
+        f.write(text_to_write)
     
     print(f"[translation] Successfully wrote {file_id}")
     return {}
