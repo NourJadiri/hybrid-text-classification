@@ -6,11 +6,12 @@ class ClassificationState(TypedDict):
     text: str
     category: NotRequired[str]
     narratives: NotRequired[List[Any]]
-    subnarratives: NotRequired[list[Any]]
+    subnarratives: NotRequired[List[Any]]
     file_id: str
     
+    # Validation state fields
     narrative_validation_feedback: NotRequired[str]
     narrative_retry_count: NotRequired[int]
     
-    subnarratives_validation_feedback: NotRequired[str]
+    subnarrative_validation_feedback: NotRequired[str]
     subnarrative_retry_count: NotRequired[int]

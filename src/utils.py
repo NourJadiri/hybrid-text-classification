@@ -1,5 +1,33 @@
 import os
-from typing import List
+from typing import List, Set
+
+
+def get_processed_files(output_file_path: str) -> Set[str]:
+    """
+    Parse the output file to get a set of already processed file names.
+    
+    Args:
+        output_file_path: Path to the TSV output file
+        
+    Returns:
+        Set of file names that have already been processed
+    """
+    processed_files = set()
+    try:
+        if os.path.exists(output_file_path):
+            with open(output_file_path, 'r', encoding='utf-8') as file:
+                for line in file:
+                    line = line.strip()
+                    if line:
+                        file_name = line.split('\t')[0]
+                        processed_files.add(file_name)
+            print(f"[utils] Found {len(processed_files)} already processed files")
+        else:
+            print(f"[utils] Output file {output_file_path} does not exist, processing all files")
+    except Exception as e:
+        print(f"[utils] Error reading output file {output_file_path}: {e}")
+    
+    return processed_files
 
 
 def get_texts_in_folder(folder_path: str) -> tuple[List[str], List[str]]:
@@ -22,6 +50,40 @@ def get_texts_in_folder(folder_path: str) -> tuple[List[str], List[str]]:
     except Exception as e:
         print(f"Error reading files from {folder_path}: {e}")
     return texts, file_names
+
+def get_unprocessed_texts(folder_path: str, output_file_path: str) -> tuple[List[str], List[str]]:
+    """
+    Get texts and file names for files that haven't been processed yet.
+    
+    Args:
+        folder_path: Path to the folder containing text files
+        output_file_path: Path to the TSV output file to check for processed files
+        
+    Returns:
+        Tuple of (texts, file_names) for unprocessed files only
+    """
+    # Get all files and texts
+    all_texts, all_file_names = get_texts_in_folder(folder_path)
+    
+    # Get processed files
+    processed_files = get_processed_files(output_file_path)
+    
+    # Filter out processed files
+    unprocessed_texts = []
+    unprocessed_file_names = []
+    
+    for text, file_name in zip(all_texts, all_file_names):
+        if file_name not in processed_files:
+            unprocessed_texts.append(text)
+            unprocessed_file_names.append(file_name)
+    
+    print(f"[utils] Total files: {len(all_file_names)}, Already processed: {len(processed_files)}, To process: {len(unprocessed_file_names)}")
+    
+    if unprocessed_file_names:
+        print(f"[utils] Files to process: {', '.join(unprocessed_file_names[:5])}{'...' if len(unprocessed_file_names) > 5 else ''}")
+    
+    return unprocessed_texts, unprocessed_file_names
+
 
 def get_narratives_for_category(taxonomy: dict, category: str) -> List[str]:
     """

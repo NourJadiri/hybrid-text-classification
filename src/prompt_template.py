@@ -99,12 +99,16 @@ After your internal reasoning is complete, provide your final analysis as a sing
 ## OUTPUT FORMAT (JSON Schema)
 
 Your entire response must be a single JSON object conforming to this schema:
+## OUTPUT FORMAT (JSON Schema)
+
+Your entire response MUST be a single JSON object. ALL fields in the schema below are REQUIRED. Do not omit any fields.
+
 {
   "narratives": [
     {
-      "narrative_name": "string (The exact name from the list)",
-      "evidence_quote": "string (The direct quote from the text you found as evidence)",
-      "reasoning": "string (Your justification connecting the quote to the narrative)"
+      "narrative_name": "string (REQUIRED)",
+      "evidence_quote": "string (REQUIRED)",
+      "reasoning": "string (REQUIRED - A brief justification is mandatory)"
     }
   ]
 }
@@ -214,12 +218,16 @@ After your internal reasoning is complete, provide your final analysis as a sing
 ## OUTPUT FORMAT (JSON Schema)
 
 Your entire response must be a single JSON object conforming to this schema:
+## OUTPUT FORMAT (JSON Schema)
+
+Your entire response MUST be a single JSON object. ALL fields in the schema below are REQUIRED. Do not omit any fields.
+
 {
-  "subnarratives": [
+  "narratives": [
     {
-      "subnarrative_name": "string (The exact name from the list)",
-      "evidence_quote": "string (The direct quote from the text you found as evidence)",
-      "reasoning": "string (Your justification connecting the quote to the subnarrative)"
+      "subnarrative_name": "string (REQUIRED)",
+      "evidence_quote": "string (REQUIRED)",
+      "reasoning": "string (REQUIRED - A brief justification is mandatory)"
     }
   ]
 }

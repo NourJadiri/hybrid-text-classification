@@ -1,0 +1,10 @@
+model_name: openai:gpt-5-nano
+input_folder: testset/EN/subtask-2-documents/
+output_file: results/experiment_narrative_validation_only.txt
+
+# Granular validation settings
+enable_narrative_validation: true      # Validate narratives
+enable_subnarrative_validation: false  # Skip subnarrative validation
+
+enable_cleaning: true
+max_concurrency: 20

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
 class CategoryClassification(BaseModel):
     """The category classification for a given text."""
@@ -10,7 +10,7 @@ class Narrative(BaseModel):
     """Represents a single identified propaganda narrative."""
     narrative_name: str = Field(description="The exact, full name of the narrative from the provided list.")
     evidence_quote: str = Field(description="A direct quote from the text that serves as the primary evidence for this narrative.")
-    reasoning: str = Field(description="A brief explanation of how the quote and the text's context support the chosen narrative definition.")
+    reasoning: Optional[str] = Field(description="A brief explanation of how the quote and the text's context support the chosen narrative definition.")
     
     def __str__(self) -> str:
         return self.narrative_name

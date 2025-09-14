@@ -5,7 +5,7 @@ from langchain.chat_models import init_chat_model
 from langgraph.graph import StateGraph, START, END
 from label_info import flatten_taxonomy, load_taxonomy
 from state import ClassificationState
-from utils import get_texts_in_folder
+from utils import get_unprocessed_texts
 from graph_nodes import (
     classify_category_node,
     handle_other_category_node,
@@ -22,17 +22,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuration
-MODEL = "openai:gpt-5-nano"
-llm = init_chat_model(MODEL)
-OUTPUT_FILE = f"results/{MODEL.split(':')[1]}/no_subnarrative_validation.txt"
+MODEL = "mistral-medium-latest"
+llm = init_chat_model(MODEL, model_provider="mistralai")
+OUTPUT_FILE = f"results/{MODEL}/no_subnarrative_validation.txt"
 
-# Load taxonomy data
 taxonomy = load_taxonomy()
 flat_narratives, flat_subnarratives = flatten_taxonomy(taxonomy)
 
 
-# Wrapper functions to inject dependencies into node functions
 def _classify_category_node(state: ClassificationState) -> dict:
     return classify_category_node(state, llm)
 
@@ -73,7 +70,6 @@ def create_classification_graph():
 
     builder = StateGraph(ClassificationState)
     
-    # Add nodes using wrapper functions
     builder.add_node("categories", _classify_category_node)
     builder.add_node("narratives", _classify_narratives_node)
     builder.add_node("validate_narratives", _validate_narratives_node)
@@ -84,7 +80,6 @@ def create_classification_graph():
     builder.add_node("handle_empty_narratives", _handle_empty_narratives_node)
     builder.add_node("write_results", _write_results_node)
 
-    # Define graph flow
     builder.add_edge(START, "categories")
     builder.add_conditional_edges("categories", route_after_category)
     
@@ -107,12 +102,16 @@ def create_classification_graph():
 
 classification_graph = create_classification_graph()
 config = {
-    "max_concurrency": 20
+    "max_concurrency": 6
 }
 
-text_list, file_names = get_texts_in_folder("testset/EN/subtask-2-documents/")
+text_list, file_names = get_unprocessed_texts("testset/EN/subtask-2-documents/", OUTPUT_FILE)
 
-initial_states_batch = [{"text": text, "file_id": file_id} for text, file_id in zip(text_list[:5], file_names[:5])]
+if not text_list:
+    print("[graph] No unprocessed files found. Exiting.")
+    exit(0)
+
+initial_states_batch = [{"text": text, "file_id": file_id} for text, file_id in zip(text_list, file_names)]
 print(f"[graph] Initial states batch prepared with {len(initial_states_batch)} items.")
 
 async def main():
