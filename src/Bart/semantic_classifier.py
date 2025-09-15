@@ -43,7 +43,7 @@ class SemanticClassifier(nn.Module):
         # activations during training.
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor):
+    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor | None = None):
         """
         Defines the forward pass of the model.
         """
