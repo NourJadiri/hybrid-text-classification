@@ -101,11 +101,12 @@ model = SemanticClassifier(
 # These control various aspects of the fine-tuning process
 training_args = TrainingArguments(
     output_dir='./results',              # Directory to save model checkpoints
-    num_train_epochs=3,                  # Total number of training epochs
-    per_device_train_batch_size=2,       # Batch size for training (adjust based on your GPU VRAM)
+    num_train_epochs=5,                  # Total number of training epochs
+    per_device_train_batch_size=4,       # Batch size for training (adjust based on your GPU VRAM)
     per_device_eval_batch_size=2,        # Batch size for evaluation
     gradient_accumulation_steps=4,       # Increase effective batch size to 2*4=8
-    warmup_steps=500,                    # Number of steps for the learning rate warmup
+    warmup_ratio=0.2,
+    label_smoothing_factor=0.1,           # Number of steps for the learning rate warmup
     weight_decay=0.01,                   # Strength of weight decay regularization
     logging_dir='./logs',                # Directory for storing logs
     logging_steps=50,                    # Log metrics every 50 steps
@@ -113,7 +114,8 @@ training_args = TrainingArguments(
     save_strategy="epoch",               # Save a checkpoint at the end of each epoch
     load_best_model_at_end=True,         # Load the best model found during training at the end
     metric_for_best_model="f1_micro",    # Use f1_micro to determine the "best" model
-    fp16=True,                           # Use mixed-precision training for speedup (requires CUDA)
+    fp16=True,       # Use mixed-precision training for speedup (requires CUDA)
+    learning_rate=5e-6,
 )
 
 # Create the Trainer instance
