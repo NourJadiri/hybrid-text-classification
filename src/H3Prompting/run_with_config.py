@@ -8,11 +8,14 @@ import sys
 from pathlib import Path
 from typing import cast
 
+from dotenv import load_dotenv
+
 from config_loader import ClassificationConfig, create_example_config
 from graph_builder import build_graph_from_config
 from utils import get_unprocessed_texts
 from state import ClassificationState
 
+load_dotenv()
 
 async def run_classification(config_path: str) -> None:
     """

@@ -24,7 +24,6 @@ from graph_nodes import (
     write_results_node,
     handle_empty_narratives_node
 )
-from graph_utils import route_after_category
 
 
 class ConfigurableGraphBuilder:
