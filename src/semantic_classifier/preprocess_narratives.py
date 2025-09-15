@@ -72,6 +72,23 @@ for _, row in tqdm(df_clean.iterrows(), total=len(df_clean), desc = "Assembling 
 print(f"Assembled {len(data_rows)} data rows.")
 dataset = Dataset.from_list(data_rows)
 
+print("Calculating class weights for balancing...")
+temp_df = pd.DataFrame(data_rows)
+
+labels_matrix = np.array(temp_df['labels'].tolist())
+
+positive_counts = labels_matrix.sum(axis=0)
+
+negative_counts = len(temp_df) - positive_counts
+
+epsilon = 1e-8
+pos_weights = negative_counts / (positive_counts + epsilon)
+
+pos_weights_tensor = torch.tensor(pos_weights, dtype=torch.float)
+
+print(f"Calculated positive weights for {len(pos_weights_tensor)} labels.")
+print("Example weights (first 10):", pos_weights_tensor[:10])
+
 
 print("\nStep 1.4: Tokenizing the Dataset")
 tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
@@ -91,8 +108,11 @@ print(final_dataset)
 print("Saving the tokenized dataset to disk...")
 
 os.makedirs(DATASET_OUTPUT_PATH, exist_ok=True)
+
 final_dataset.save_to_disk(DATASET_OUTPUT_PATH)
+
 torch.save(narrative_embeddings, 'narrative_model_artifacts/narrative_embeddings.pt')
+torch.save(pos_weights_tensor, "narrative_model_artifacts/pos_weights.pt")
 
 with open('narrative_model_artifacts/label_mappings.json', 'w') as f:
     json.dump({
