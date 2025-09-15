@@ -12,7 +12,7 @@ class SemanticClassifier(nn.Module):
     input text. It then calculates the cosine similarity between this text
     embedding and pre-computed embeddings of the hierarchical labels.
     """
-    def __init__(self, model_name: str, label_embeddings: torch.Tensor):
+    def __init__(self, model_name: str, label_embeddings: torch.Tensor, pos_weights: torch.Tensor):
         """
         Initializes the SemanticClassifier.
 
@@ -37,6 +37,7 @@ class SemanticClassifier(nn.Module):
         # a model parameter, so the optimizer will not update it during training.
         # This is perfect for our static, pre-computed label meanings.
         self.register_buffer("label_embeddings", label_embeddings)
+        self.register_buffer("pos_weights", pos_weights)
         
         # 3. Add a dropout layer for regularization.
         # This helps prevent overfitting by randomly zeroing out some of the
@@ -78,7 +79,7 @@ class SemanticClassifier(nn.Module):
             # For multi-label classification, the appropriate loss function is
             # Binary Cross-Entropy with Logits. It's numerically stable and
             # handles the sigmoid activation and loss calculation in one step.
-            loss_fct = nn.BCEWithLogitsLoss()
+            loss_fct = nn.BCEWithLogitsLoss(pos_weight=self.pos_weights)
             loss = loss_fct(logits, labels.float())
 
         # Return a dictionary, which is compatible with the Hugging Face Trainer.

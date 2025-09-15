@@ -16,6 +16,8 @@ TEST_DATA_DIR = "testset/EN/subtask-2-documents"
 PREDICTION_THRESHOLD = 0.43
 # New: Path for the output file
 OUTPUT_FILE_PATH = "predictions.txt"
+POS_WEIGHTS_PATH = "embeddings/pos_weights.pt"
+from Bart.training import POS_WEIGHTS_PATH
 from semantic_classifier import SemanticClassifier
 
 # --- Step 2: Load Model, Tokenizer, and Label Information ---
@@ -23,11 +25,12 @@ print("--- Loading model, tokenizer, and label info ---")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 label_embeddings = torch.load(LABEL_EMBEDDINGS_PATH)
+pos_weights = torch.load(POS_WEIGHTS_PATH)
 with open(LABEL_MAPPINGS_PATH, 'r') as f:
     label_mappings = json.load(f)
 id2label = {int(k): v for k, v in label_mappings['id2label'].items()}
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = SemanticClassifier(model_name=MODEL_PATH, label_embeddings=label_embeddings)
+model = SemanticClassifier(model_name=MODEL_PATH, label_embeddings=label_embeddings, pos_weights=pos_weights)
 model.to(device)
 model.eval()
 print("✅ Model and tokenizer loaded successfully.")

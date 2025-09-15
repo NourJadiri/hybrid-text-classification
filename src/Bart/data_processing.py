@@ -94,17 +94,31 @@ if missing_files:
     print("This could cause text-label misalignment in train/test split.")
     for missing in missing_files[:5]:  # Show first 5
         print(f"  Missing: {missing['filename']} (index {missing['index']})")
-    
-    # Option: Exit early if any files are missing
-    # raise FileNotFoundError(f"Cannot proceed with {len(missing_files)} missing files")
 else:
     print("✅ All files found - perfect text-label alignment guaranteed!")
 
-processed_df = pd.DataFrame(data_rows)
-# ... The rest of your script (tokenization, saving) is correct and can remain the same ...
-# --- Sub-step 2.5: Tokenizing with Longformer and Creating Final Dataset ---
+processed_df = pd.DataFrame(data_rows) # This df contains the 'labels' column with vectors
+
+# --- NEW: Step 2.5: Calculate Class Weights for Imbalanced Data ---
+print("\n--- Step 2.5: Calculating weights for imbalanced classes ---")
+
+# Sum the label vectors across all documents to get counts for each label
+labels_matrix = np.array(processed_df['labels'].tolist())
+positive_counts = labels_matrix.sum(axis=0)
+negative_counts = len(processed_df) - positive_counts
+
+# Calculate pos_weight for each class. Add a small epsilon to avoid division by zero.
+epsilon = 1e-8
+pos_weights = negative_counts / (positive_counts + epsilon)
+
+# Convert to a PyTorch tensor
+pos_weights_tensor = torch.tensor(pos_weights, dtype=torch.float)
+
+print(f"Calculated positive weights for {len(pos_weights_tensor)} labels.")
+print("Example weights (first 10):", pos_weights_tensor[:10])
+
 print(f"\nProcessed {len(processed_df)} documents.")
-print(f"\n--- Step 2.5: Tokenizing with '{MODEL_NAME}' Tokenizer ---")
+print(f"\n--- Step 2.6: Tokenizing with '{MODEL_NAME}' Tokenizer ---")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 hf_dataset = Dataset.from_pandas(processed_df)
 
@@ -134,6 +148,7 @@ os.makedirs("embeddings", exist_ok=True)
 
 final_datasets.save_to_disk("data/processed/tokenized_hierarchical_dataset")
 torch.save(label_embeddings, "embeddings/label_embeddings.pt")
+torch.save(pos_weights_tensor, "embeddings/pos_weights.pt")
 with open("label_mappings.json", "w") as f:
     json.dump({"label2id": label2id, "id2label": id2label}, f, indent=4)
 

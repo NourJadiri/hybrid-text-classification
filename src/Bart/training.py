@@ -17,6 +17,7 @@ MODEL_NAME = 'allenai/longformer-base-4096'
 DATASET_PATH = "data/processed/tokenized_hierarchical_dataset"
 LABEL_EMBEDDINGS_PATH = "embeddings/label_embeddings.pt"
 LABEL_MAPPINGS_PATH = "label_mappings.json"
+POS_WEIGHTS_PATH = "embeddings/pos_weights.pt"
 
 # --- Step 3.2: Load All Preprocessed Artifacts ---
 
@@ -25,6 +26,7 @@ print("--- Step 3.2: Loading Preprocessed Data and Embeddings ---")
 tokenized_datasets = load_from_disk(DATASET_PATH)
 # Load the label embeddings
 label_embeddings = torch.load(LABEL_EMBEDDINGS_PATH)
+pos_weights = torch.load(POS_WEIGHTS_PATH)
 # Load the label mappings
 with open(LABEL_MAPPINGS_PATH, 'r') as f:
     label_mappings = json.load(f)
@@ -94,7 +96,8 @@ print("\n--- Step 3.4: Setting Up the Trainer ---")
 # Instantiate our custom model
 model = SemanticClassifier(
     model_name=MODEL_NAME,
-    label_embeddings=label_embeddings
+    label_embeddings=label_embeddings,
+    pos_weights=pos_weights
 )
 
 # Define the training arguments
