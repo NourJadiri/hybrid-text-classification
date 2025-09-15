@@ -108,8 +108,7 @@ training_args = TrainingArguments(
     per_device_train_batch_size=4,       # Batch size for training (adjust based on your GPU VRAM)
     per_device_eval_batch_size=2,        # Batch size for evaluation
     gradient_accumulation_steps=4,       # Increase effective batch size to 2*4=8
-    warmup_ratio=0.2,
-    label_smoothing_factor=0.1,           # Number of steps for the learning rate warmup
+    warmup_ratio=0.2,                    # Number of steps for the learning rate warmup
     weight_decay=0.01,                   # Strength of weight decay regularization
     logging_dir='./logs',                # Directory for storing logs
     logging_steps=50,                    # Log metrics every 50 steps
