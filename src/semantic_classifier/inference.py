@@ -26,7 +26,7 @@ pos_weights = torch.load(os.path.join(ARTIFACTS_PATH, 'pos_weights.pt'))
 
 with open(os.path.join(ARTIFACTS_PATH, 'label_mappings.json'), 'r') as f:
     label_mappings = json.load(f)
-id2label = label_mappings['id2label']
+id2label = {int(k): v for k, v in label_mappings['id2label'].items()}
 num_labels = len(id2label)
 print(f"Number of labels: {num_labels}")
 
