@@ -39,35 +39,53 @@ print(f"Loaded label embeddings with shape: {label_embeddings.shape}")
 print("\n--- Step 3.3: Defining Evaluation Metrics ---")
 # This function will be called by the Trainer at each evaluation step.
 def compute_metrics(p):
-    # p is an EvalPrediction object, a named tuple with predictions and label_ids.
-    # The .predictions attribute can be a tuple if the model returns more than just logits.
-    # In our case, it's a dictionary, so the Trainer puts logits in the first element.
     logits = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
     labels = p.label_ids
-
-    # Apply sigmoid to logits to get probabilities [0, 1] for each label
+    
+    # 1. Get probabilities
     sigmoid = torch.nn.Sigmoid()
     probs = sigmoid(torch.Tensor(logits))
     
-    # Use a threshold to convert probabilities to binary predictions [0, 1]
-    threshold = 0.5
-    y_pred = np.zeros(probs.shape)
-    y_pred[np.where(probs >= threshold)] = 1
+    # --- New Logic: Find the best threshold ---
+    # We will search for the threshold that maximizes the F1 score
+    # We check thresholds from 0.1 to 0.9 in steps of 0.01
+    best_f1 = 0
+    best_threshold = 0.5 # Default
     
-    # Calculate metrics
-    # F1 score (micro) is a good overall metric for multi-label classification
-    f1_micro_average = f1_score(y_true=labels, y_pred=y_pred, average='micro')
-    # ROC AUC (micro) - use probabilities, not binary predictions
-    roc_auc = roc_auc_score(y_true=labels, y_score=probs.numpy(), average='micro')
-    # Accuracy: fraction of correctly predicted labels (can be misleading in multi-label)
-    accuracy = accuracy_score(y_true=labels, y_pred=y_pred)
+    # Flatten arrays for micro-averaging
+    y_true_flat = labels.flatten()
+    y_probs_flat = probs.numpy().flatten()
     
-    # Return as a dictionary
+    for threshold in np.arange(0.1, 0.9, 0.01):
+        # Apply threshold to get binary predictions
+        y_pred_binary_flat = (y_probs_flat >= threshold).astype(int)
+        
+        # Calculate F1 score for this threshold
+        current_f1 = f1_score(y_true=y_true_flat, y_pred=y_pred_binary_flat, average='micro')
+        
+        # If this F1 is the best so far, update our best values
+        if current_f1 > best_f1:
+            best_f1 = current_f1
+            best_threshold = threshold
+            
+    # --- End of New Logic ---
+    
+    # Now, calculate all metrics using the BEST threshold we found
+    y_pred_best_binary = (probs.numpy() >= best_threshold).astype(int)
+    
+    accuracy_at_best_f1 = accuracy_score(y_true=labels, y_pred=y_pred_best_binary)
+    
+    # ROC AUC is independent of the threshold, so we calculate it as before
+    roc_auc_micro = roc_auc_score(y_true=labels, y_score=probs, average='micro')
+    
+    # We can also report the optimal threshold itself, which is very useful!
     metrics = {
-        'f1_micro': f1_micro_average,
-        'roc_auc_micro': roc_auc,
-        'accuracy': accuracy
+        'f1_micro': best_f1,
+        'roc_auc_micro': roc_auc_micro,
+        'accuracy_at_best_f1': accuracy_at_best_f1,
+        'optimal_threshold': best_threshold
     }
+    
     return metrics
 
 # --- Step 3.4: Set Up the Trainer ---
