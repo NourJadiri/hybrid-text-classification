@@ -9,73 +9,60 @@ from transformers import AutoTokenizer
 from tqdm.auto import tqdm
 
 # --- Configuration ---
-# Updated paths to match the actual data structure
 DATA_DIR = 'data/subtask-2-translated/'
 ANNOTATION_FILE = 'data/subtask-2-translated/subtask-2-annotations.txt'
 MODEL_NAME = 'allenai/longformer-base-4096'
-EMBEDDING_MODEL_NAME = 'all-mpnet-base-v2'
+EMBEDDING_MODEL_NAME = 'all-mpnet-base-v2' # The 768-dim model
 
-# --- Sub-step 2.1: Discover All Unique Narrative and Sub-narrative Labels ---
-
-print("--- Step 2.1: Discovering All Unique Labels from the Dataset ---")
-
-# Load annotations from the consolidated annotation file
-print(f"Loading annotations from {ANNOTATION_FILE}")
+# --- Step 2.1: Load and Filter Annotations ONCE ---
+print("--- Step 2.1: Loading and Filtering Annotations ---")
 if not os.path.exists(ANNOTATION_FILE):
     raise FileNotFoundError(f"Annotation file not found: {ANNOTATION_FILE}")
 
-df_for_discovery = pd.read_csv(
+# Load the complete annotations file
+df_all = pd.read_csv(
     ANNOTATION_FILE,
     sep='\t',
     header=None,
-    names=['filename', 'narratives', 'subnarratives']  # Based on the actual format
+    names=['filename', 'narratives', 'subnarratives']
 )
 
+# ** THE CRITICAL FIX: Filter the dataframe first and create our clean, final version **
+df_clean = df_all[df_all['narratives'] != 'Other'].reset_index(drop=True)
+print(f"Loaded and filtered {len(df_clean)} labeled documents.")
+
+# --- Step 2.2: Discover Unique Labels from the CLEAN DataFrame ---
+print("\n--- Step 2.2: Discovering Unique Labels ---")
 unique_labels = set()
-
-# Gather all unique labels from both the narrative and sub-narrative columns
-for _, row in df_for_discovery.iterrows():
-    # Process Narratives (L1)
+# ** Use the clean dataframe for ALL subsequent operations **
+for _, row in df_clean.iterrows():
     if pd.notna(row['narratives']):
-        labels = {lbl.strip() for lbl in row['narratives'].split(';')}
-        unique_labels.update(labels)
-        
-    # Process Sub-narratives (L2)
+        unique_labels.update({lbl.strip() for lbl in row['narratives'].split(';')})
     if pd.notna(row['subnarratives']):
-        labels = {lbl.strip() for lbl in row['subnarratives'].split(';')}
-        unique_labels.update(labels)
+        unique_labels.update({lbl.strip() for lbl in row['subnarratives'].split(';')})
 
-# Remove the generic 'Other' label if it exists
-if 'Other' in unique_labels:
-    unique_labels.remove('Other')
-
-# Create the final sorted list and mappings
 sorted_labels = sorted(list(unique_labels))
 label2id = {label: i for i, label in enumerate(sorted_labels)}
 id2label = {i: label for i, label in enumerate(sorted_labels)}
 num_labels = len(sorted_labels)
-
 print(f"Discovered {num_labels} unique labels (Narratives and Sub-narratives).")
 print("Example labels:", json.dumps(sorted_labels[:5], indent=2))
 
-# --- Sub-step 2.2: Generate Semantic Embeddings for Labels ---
 
-print(f"\n--- Step 2.2: Generating Label Embeddings using '{EMBEDDING_MODEL_NAME}' ---")
+# --- Step 2.3: Generate Semantic Embeddings for Labels ---
+print(f"\n--- Step 2.3: Generating Label Embeddings using '{EMBEDDING_MODEL_NAME}' ---")
 embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
-print("Encoding labels into semantic vectors...")
 label_embeddings_np = embedding_model.encode(sorted_labels)
 label_embeddings = torch.tensor(label_embeddings_np, dtype=torch.float)
 print(f"Label embeddings created with shape: {label_embeddings.shape}")
 
-# --- Sub-step 2.3: Load Texts and Create Final Label Vectors ---
 
-print("\n--- Step 2.3: Loading Texts and Preparing Data Rows ---")
+# --- Step 2.4: Assemble Data Rows from the CLEAN DataFrame ---
+print("\n--- Step 2.4: Assembling Data Rows ---")
 data_rows = []
-for _, row in tqdm(df_for_discovery.iterrows(), total=len(df_for_discovery), desc="Processing rows"):
-    if row['narratives'] == 'Other':
-        continue
-    
-    # Build correct file path - all files are in the subtask-2-translated folder
+missing_files = []
+# ** Use the clean dataframe again, ensuring perfect alignment **
+for idx, row in tqdm(df_clean.iterrows(), total=len(df_clean), desc="Processing rows"):
     filename = row['filename']
     file_path = os.path.join(DATA_DIR, filename)
     
@@ -83,6 +70,7 @@ for _, row in tqdm(df_for_discovery.iterrows(), total=len(df_for_discovery), des
         with open(file_path, 'r', encoding='utf-8') as f:
             text = f.read()
     except FileNotFoundError:
+        missing_files.append({"index": idx, "filename": filename})
         print(f"Warning: File not found, skipping: {file_path}")
         continue
 
@@ -100,14 +88,23 @@ for _, row in tqdm(df_for_discovery.iterrows(), total=len(df_for_discovery), des
 
     data_rows.append({"text": text, "labels": label_vector})
 
+# Verify alignment
+if missing_files:
+    print(f"WARNING: {len(missing_files)} files were missing and skipped!")
+    print("This could cause text-label misalignment in train/test split.")
+    for missing in missing_files[:5]:  # Show first 5
+        print(f"  Missing: {missing['filename']} (index {missing['index']})")
+    
+    # Option: Exit early if any files are missing
+    # raise FileNotFoundError(f"Cannot proceed with {len(missing_files)} missing files")
+else:
+    print("✅ All files found - perfect text-label alignment guaranteed!")
+
 processed_df = pd.DataFrame(data_rows)
+# ... The rest of your script (tokenization, saving) is correct and can remain the same ...
+# --- Sub-step 2.5: Tokenizing with Longformer and Creating Final Dataset ---
 print(f"\nProcessed {len(processed_df)} documents.")
-print("Sample processed row:")
-print(processed_df.iloc[0].to_dict())
-
-# --- Sub-step 2.4: Tokenizing with Longformer and Creating Final Dataset ---
-
-print(f"\n--- Step 2.4: Tokenizing with '{MODEL_NAME}' Tokenizer ---")
+print(f"\n--- Step 2.5: Tokenizing with '{MODEL_NAME}' Tokenizer ---")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 hf_dataset = Dataset.from_pandas(processed_df)
 
@@ -131,6 +128,10 @@ print(final_datasets)
 
 # --- Save artifacts for the next step ---
 print("\nSaving artifacts for training...")
+# Create directories if they don't exist
+os.makedirs("data/processed", exist_ok=True)
+os.makedirs("embeddings", exist_ok=True)
+
 final_datasets.save_to_disk("data/processed/tokenized_hierarchical_dataset")
 torch.save(label_embeddings, "embeddings/label_embeddings.pt")
 with open("label_mappings.json", "w") as f:
