@@ -137,6 +137,7 @@ print("\nTraining finished!")
 # --- Save the final model and tokenizer ---
 final_model_path = "./final_semantic_classifier"
 trainer.save_model(final_model_path)
+model.bert.config.save_pretrained(final_model_path)
 
 # Save the tokenizer separately (it's not stored in dataset features)
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
