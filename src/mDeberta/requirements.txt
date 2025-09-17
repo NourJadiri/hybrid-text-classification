@@ -1,0 +1,33 @@
+# Requirements for mDeberta Training Process
+# Core ML and Deep Learning
+torch>=2.0.0
+transformers>=4.40.0
+datasets>=2.10.0
+accelerate>=0.20.0
+
+# Data Processing and Analysis
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Progress Tracking and Utilities
+tqdm>=4.65.0
+
+# Optional but recommended for performance
+# GPU acceleration (if using CUDA)
+# torch-audio  # Uncomment if needed
+# torchvision  # Uncomment if needed
+
+# Development and debugging (optional)
+# jupyter>=1.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# For model evaluation and metrics
+# tensorboard>=2.13.0  # Uncomment for training visualization
+
+# Notes:
+# - This file contains minimal dependencies for mDeberta training
+# - Make sure you have CUDA-compatible PyTorch if using GPU
+# - The main project requirements.txt contains additional dependencies
+# - Install with: pip install -r requirements.txt
