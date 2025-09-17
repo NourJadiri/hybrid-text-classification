@@ -134,7 +134,7 @@ def process_test_files(test_dir, model, tokenizer, id2label, threshold=0.5):
     return results
 
 def save_predictions_tsv_format(results, output_file):
-    """Save predictions in the same format as training TSV"""
+    """Save predictions in TSV format with only narratives, subnarratives filled with 'Other'"""
     print(f"Saving predictions to {output_file}...")
     
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -145,14 +145,14 @@ def save_predictions_tsv_format(results, output_file):
             # Join narratives with semicolons
             narratives_str = ';'.join(narratives)
             
-            # For now, we don't predict subnarratives, so use the same as narratives
-            # In a real scenario, you might want to have a separate model or mapping for subnarratives
-            subnarratives_str = narratives_str  # Simplified approach
+            # Always use "Other" for subnarratives column as requested
+            subnarratives_str = "Other"
             
             # Write in TSV format: filename\tnarratives\tsubnarratives
             f.write(f"{filename}\t{narratives_str}\t{subnarratives_str}\n")
     
     print(f"Predictions saved to {output_file}")
+    print("Note: All subnarratives set to 'Other' as requested")
 
 def save_detailed_predictions(results, output_file):
     """Save detailed predictions with probabilities"""
