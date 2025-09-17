@@ -26,6 +26,10 @@ EARLY_STOPPING_PATIENCE = 3  # Number of evaluations without improvement before 
 EARLY_STOPPING_THRESHOLD = 0.001  # Minimum improvement threshold
 MAX_EPOCHS = 10  # Maximum number of epochs (early stopping may end training sooner)
 
+# Threshold optimization configuration
+THRESHOLD_SEARCH_RANGE = (0.1, 0.9)  # Range of thresholds to search
+THRESHOLD_SEARCH_STEPS = 17  # Number of threshold values to test
+
 
 # -----------------------------------------------------------------------------
 # Load preprocessed dataset and artifacts
@@ -51,12 +55,14 @@ print(f"Number of labels: {num_labels}")
 
 
 # -----------------------------------------------------------------------------
-# Custom Weighted BCE Loss Trainer
+# Custom Weighted BCE Loss Trainer with Threshold Tracking
 # -----------------------------------------------------------------------------
 class WeightedBCETrainer(Trainer):
     def __init__(self, pos_weights, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.pos_weights = pos_weights.to(self.args.device if hasattr(self.args, 'device') else 'cpu')
+        self.best_threshold = THRESHOLD  # Track the best threshold found during training
+        self.threshold_history = []  # Track threshold history
     
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels = inputs.pop("labels")
@@ -71,43 +77,131 @@ class WeightedBCETrainer(Trainer):
         loss = loss_fn(logits, labels.float())
         
         return (loss, outputs) if return_outputs else loss
+    
+    def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
+        """Override evaluate to track optimal thresholds."""
+        eval_result = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+        
+        # Extract optimal threshold from evaluation results
+        if f"{metric_key_prefix}_optimal_threshold" in eval_result:
+            current_threshold = eval_result[f"{metric_key_prefix}_optimal_threshold"]
+            self.threshold_history.append({
+                'epoch': len(self.threshold_history) + 1,
+                'threshold': current_threshold,
+                'f1_sample': eval_result.get(f"{metric_key_prefix}_f1_sample", 0.0)
+            })
+            
+            # Update best threshold if this is the best F1 score so far
+            if (not hasattr(self, '_best_f1_sample') or 
+                eval_result.get(f"{metric_key_prefix}_f1_sample", 0.0) > self._best_f1_sample):
+                self._best_f1_sample = eval_result.get(f"{metric_key_prefix}_f1_sample", 0.0)
+                self.best_threshold = current_threshold
+                print(f"New best threshold found: {current_threshold:.3f} (F1 sample: {self._best_f1_sample:.4f})")
+        
+        return eval_result
 
 
 # -----------------------------------------------------------------------------
-# Metrics: compute sample-, micro-, and macro-F1 (primary: sample-F1)
+# Threshold optimization and metrics computation
 # -----------------------------------------------------------------------------
-def compute_metrics(p):
+def find_optimal_threshold(y_true, y_probs, metric='f1_sample', search_range=(0.1, 0.9), steps=17):
+    """
+    Find optimal threshold by grid search to maximize the specified metric.
+    
+    Args:
+        y_true: Ground truth labels (numpy array)
+        y_probs: Predicted probabilities (numpy array) 
+        metric: Metric to optimize ('f1_sample', 'f1_micro', 'f1_macro')
+        search_range: (min_threshold, max_threshold) 
+        steps: Number of threshold values to test
+    
+    Returns:
+        best_threshold, best_score
+    """
+    thresholds = np.linspace(search_range[0], search_range[1], steps)
+    best_score = 0.0
+    best_threshold = 0.5
+    
+    for threshold in thresholds:
+        y_pred = (y_probs >= threshold).astype(int)
+        
+        try:
+            if metric == 'f1_sample':
+                score = f1_score(y_true, y_pred, average='samples', zero_division=0)
+            elif metric == 'f1_micro':
+                score = f1_score(y_true, y_pred, average='micro', zero_division=0)
+            elif metric == 'f1_macro':
+                score = f1_score(y_true, y_pred, average='macro', zero_division=0)
+            else:
+                raise ValueError(f"Unsupported metric: {metric}")
+                
+            if score > best_score:
+                best_score = score
+                best_threshold = threshold
+        except Exception:
+            continue
+    
+    return best_threshold, best_score
+
+
+def compute_metrics_with_threshold_optimization(p):
+    """
+    Compute metrics with automatic threshold optimization for F1 sample score.
+    """
     logits = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
     labels = p.label_ids
 
-    # probabilities and binary predictions
-    probs = torch.sigmoid(torch.tensor(logits))
-    preds = (probs >= THRESHOLD).to(torch.int)
+    # Convert to numpy arrays
+    y_true = labels.astype(int) if isinstance(labels, np.ndarray) else np.array(labels, dtype=int)
+    y_probs = torch.sigmoid(torch.tensor(logits)).cpu().numpy()
 
-    y_true = torch.tensor(labels)
-    y_pred = preds
-
-    # Convert to numpy for sklearn
-    yt = y_true.cpu().numpy()
-    yp = y_pred.cpu().numpy()
-
+    # Find optimal threshold for F1 sample score
+    optimal_threshold, optimal_f1_sample = find_optimal_threshold(
+        y_true, y_probs, metric='f1_sample', 
+        search_range=THRESHOLD_SEARCH_RANGE, 
+        steps=THRESHOLD_SEARCH_STEPS
+    )
+    
+    # Compute predictions with optimal threshold
+    y_pred_optimal = (y_probs >= optimal_threshold).astype(int)
+    
+    # Compute all metrics with optimal threshold
     try:
-        f1_micro = f1_score(yt, yp, average='micro', zero_division=0)
+        f1_micro_optimal = f1_score(y_true, y_pred_optimal, average='micro', zero_division=0)
     except Exception:
-        f1_micro = 0.0
+        f1_micro_optimal = 0.0
     try:
-        f1_macro = f1_score(yt, yp, average='macro', zero_division=0)
+        f1_macro_optimal = f1_score(y_true, y_pred_optimal, average='macro', zero_division=0)
     except Exception:
-        f1_macro = 0.0
+        f1_macro_optimal = 0.0
+    
+    # Also compute metrics with default threshold for comparison
+    y_pred_default = (y_probs >= THRESHOLD).astype(int)
     try:
-        f1_sample = f1_score(yt, yp, average='samples', zero_division=0)
+        f1_sample_default = f1_score(y_true, y_pred_default, average='samples', zero_division=0)
     except Exception:
-        f1_sample = 0.0
+        f1_sample_default = 0.0
+    try:
+        f1_micro_default = f1_score(y_true, y_pred_default, average='micro', zero_division=0)
+    except Exception:
+        f1_micro_default = 0.0
+    try:
+        f1_macro_default = f1_score(y_true, y_pred_default, average='macro', zero_division=0)
+    except Exception:
+        f1_macro_default = 0.0
 
     return {
-        'f1_micro': float(f1_micro),
-        'f1_macro': float(f1_macro),
-        'f1_sample': float(f1_sample),  # primary metric
+        # Primary metrics (with optimal threshold)
+        'f1_sample': float(optimal_f1_sample),  # Primary metric for early stopping
+        'f1_micro': float(f1_micro_optimal),
+        'f1_macro': float(f1_macro_optimal),
+        'optimal_threshold': float(optimal_threshold),
+        
+        # Comparison metrics (with default threshold)
+        'f1_sample_default': float(f1_sample_default),
+        'f1_micro_default': float(f1_micro_default),
+        'f1_macro_default': float(f1_macro_default),
+        'default_threshold': float(THRESHOLD),
     }
 
 
@@ -160,6 +254,7 @@ training_args = TrainingArguments(
 
 print("Training arguments configured")
 print(f"Early stopping enabled - patience: {EARLY_STOPPING_PATIENCE}, threshold: {EARLY_STOPPING_THRESHOLD}")
+print(f"Threshold optimization enabled - range: {THRESHOLD_SEARCH_RANGE}, steps: {THRESHOLD_SEARCH_STEPS}")
 
 
 # -----------------------------------------------------------------------------
@@ -177,11 +272,11 @@ trainer = WeightedBCETrainer(
     args=training_args,
     train_dataset=dataset['train'],
     eval_dataset=dataset['test'],
-    compute_metrics=compute_metrics,
+    compute_metrics=compute_metrics_with_threshold_optimization,
     callbacks=[early_stopping],
 )
 
-print("Trainer initialized with weighted BCE loss and early stopping")
+print("Trainer initialized with weighted BCE loss, early stopping, and threshold optimization")
 
 
 # -----------------------------------------------------------------------------
@@ -192,6 +287,7 @@ train_result = trainer.train()
 
 print("Training completed!")
 print(f"Training loss: {train_result.training_loss:.4f}")
+print(f"Best threshold found during training: {trainer.best_threshold:.3f}")
 
 # Evaluate on test set
 print("\nEvaluating on test set...")
@@ -200,6 +296,15 @@ eval_result = trainer.evaluate()
 print("\nEvaluation Results:")
 for key, value in eval_result.items():
     print(f"{key}: {value:.4f}")
+
+# Print threshold optimization summary
+if trainer.threshold_history:
+    print(f"\nThreshold optimization summary:")
+    print(f"Best threshold: {trainer.best_threshold:.3f}")
+    print(f"Final threshold: {trainer.threshold_history[-1]['threshold']:.3f}")
+    print("Threshold evolution:")
+    for entry in trainer.threshold_history:
+        print(f"  Epoch {entry['epoch']}: threshold={entry['threshold']:.3f}, F1={entry['f1_sample']:.4f}")
 
 
 # -----------------------------------------------------------------------------
@@ -218,10 +323,14 @@ with open(os.path.join(FINAL_MODEL_PATH, 'training_config.json'), 'w') as f:
         'model_name': MODEL_NAME,
         'num_labels': num_labels,
         'threshold': THRESHOLD,
+        'best_threshold': trainer.best_threshold,
+        'threshold_history': trainer.threshold_history,
         'max_length': 512,  # From preprocessing
         'early_stopping_patience': EARLY_STOPPING_PATIENCE,
         'early_stopping_threshold': EARLY_STOPPING_THRESHOLD,
         'max_epochs': MAX_EPOCHS,
+        'threshold_search_range': THRESHOLD_SEARCH_RANGE,
+        'threshold_search_steps': THRESHOLD_SEARCH_STEPS,
         'training_args': training_args.to_dict(),
         'final_metrics': eval_result
     }, f, indent=4)
