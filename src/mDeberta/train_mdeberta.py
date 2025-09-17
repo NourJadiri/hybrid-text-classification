@@ -15,9 +15,9 @@ from sklearn.metrics import f1_score
 # -----------------------------------------------------------------------------
 # Configuration (mirrors your prior patterns)
 # -----------------------------------------------------------------------------
-MODEL_NAME = 'microsoft/mdeberta-v3-base'
+MODEL_NAME = 'microsoft/mdeberta-v3-large'
 ARTIFACTS_PATH = 'mdeberta_artifacts/'
-FINAL_MODEL_PATH = 'models/mdeberta_narratives_classifier'
+FINAL_MODEL_PATH = f'models/{MODEL_NAME}_narratives_classifier'
 THRESHOLD = 0.5  # decision threshold for multi-label F1
 
 
