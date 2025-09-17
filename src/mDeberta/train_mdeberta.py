@@ -9,16 +9,22 @@ from transformers import (
     AutoModelForSequenceClassification,
     TrainingArguments,
     Trainer,
+    EarlyStoppingCallback,
 )
 from sklearn.metrics import f1_score
 
 # -----------------------------------------------------------------------------
 # Configuration (mirrors your prior patterns)
 # -----------------------------------------------------------------------------
-MODEL_NAME = 'microsoft/mdeberta-v3-large'
+MODEL_NAME = 'microsoft/mdeberta-v3-base'
 ARTIFACTS_PATH = 'mdeberta_artifacts/'
 FINAL_MODEL_PATH = f'models/{MODEL_NAME}_narratives_classifier'
 THRESHOLD = 0.5  # decision threshold for multi-label F1
+
+# Early stopping configuration
+EARLY_STOPPING_PATIENCE = 3  # Number of evaluations without improvement before stopping
+EARLY_STOPPING_THRESHOLD = 0.001  # Minimum improvement threshold
+MAX_EPOCHS = 10  # Maximum number of epochs (early stopping may end training sooner)
 
 
 # -----------------------------------------------------------------------------
@@ -136,7 +142,7 @@ print(f"Model loaded with {num_labels} output labels")
 # -----------------------------------------------------------------------------
 training_args = TrainingArguments(
     output_dir='./results',
-    num_train_epochs=3,
+    num_train_epochs=MAX_EPOCHS,  # Max epochs - early stopping will handle convergence
     per_device_train_batch_size=16,
     per_device_eval_batch_size=16,
     warmup_ratio=0.1,
@@ -153,11 +159,18 @@ training_args = TrainingArguments(
 )
 
 print("Training arguments configured")
+print(f"Early stopping enabled - patience: {EARLY_STOPPING_PATIENCE}, threshold: {EARLY_STOPPING_THRESHOLD}")
 
 
 # -----------------------------------------------------------------------------
-# Initialize Trainer
+# Initialize Trainer with Early Stopping
 # -----------------------------------------------------------------------------
+# Early stopping callback
+early_stopping = EarlyStoppingCallback(
+    early_stopping_patience=EARLY_STOPPING_PATIENCE,  # Stop if no improvement for N evaluations
+    early_stopping_threshold=EARLY_STOPPING_THRESHOLD  # Minimum improvement threshold
+)
+
 trainer = WeightedBCETrainer(
     pos_weights=pos_weights,
     model=model,
@@ -165,9 +178,10 @@ trainer = WeightedBCETrainer(
     train_dataset=dataset['train'],
     eval_dataset=dataset['test'],
     compute_metrics=compute_metrics,
+    callbacks=[early_stopping],
 )
 
-print("Trainer initialized with weighted BCE loss")
+print("Trainer initialized with weighted BCE loss and early stopping")
 
 
 # -----------------------------------------------------------------------------
@@ -205,6 +219,9 @@ with open(os.path.join(FINAL_MODEL_PATH, 'training_config.json'), 'w') as f:
         'num_labels': num_labels,
         'threshold': THRESHOLD,
         'max_length': 512,  # From preprocessing
+        'early_stopping_patience': EARLY_STOPPING_PATIENCE,
+        'early_stopping_threshold': EARLY_STOPPING_THRESHOLD,
+        'max_epochs': MAX_EPOCHS,
         'training_args': training_args.to_dict(),
         'final_metrics': eval_result
     }, f, indent=4)
