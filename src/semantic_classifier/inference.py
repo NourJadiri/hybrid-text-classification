@@ -83,7 +83,6 @@ for filename in tqdm(test_files, desc="Processing test files"):
 print(f"\nWriting predictions to '{OUTPUT_FILE_PATH}'...")
 os.makedirs(os.path.dirname(OUTPUT_FILE_PATH), exist_ok=True)
 with open(OUTPUT_FILE_PATH, 'w', encoding='utf-8') as out_f:
-    out_f.write("filename\tpredicted_narratives\n")
     for result in results_for_df:
-        out_f.write(f"{result['filename']}\t{result['predicted_narratives']}\n")
+        out_f.write(f"{result['filename']}\t{result['predicted_narratives']}\tOther\n")
 print("Prediction process completed.")

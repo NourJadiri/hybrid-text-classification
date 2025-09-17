@@ -8,10 +8,10 @@ from datasets import Dataset
 from transformers import AutoTokenizer
 from tqdm.auto import tqdm
 
-ANNOTATION_FILE = 'data/subtask-2-translated/subtask-2-annotations.txt'
+ANNOTATION_FILE = 'data/all-texts-unified/unified-annotations.tsv'
 BASE_MODEL = 'allenai/longformer-base-4096'
 EMBEDDING_MODEL_NAME = 'all-mpnet-base-v2'
-TEXT_FILE_DIR = 'data/subtask-2-translated/'
+TEXT_FILE_DIR = 'data/all-texts-unified/texts'
 DATASET_OUTPUT_PATH = 'narrative_model_artifacts/tokenized_dataset'
 
 print("Step 1.1: Loading and Filtering Annotations")
