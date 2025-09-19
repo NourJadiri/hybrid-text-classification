@@ -1,0 +1,7 @@
+model_name: google_genai:gemini-2.5-pro
+
+input_folder: testset/BG/subtask-2-documents/
+output_file: results/gemini25_pro/bg_results.txt
+enable_validation: false
+enable_cleaning: true
+max_concurrency: 10
