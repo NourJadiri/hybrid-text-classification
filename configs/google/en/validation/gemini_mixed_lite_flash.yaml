@@ -1,0 +1,26 @@
+model_name: google_genai:gemini-2.5-flash-lite  # Default model (used for classifications)
+
+input_folder: testset/EN/subtask-2-documents/
+output_file: results/gemini_mixed_lite_flash/experiment_results.txt
+enable_validation: true
+enable_cleaning: true
+max_concurrency: 15
+
+# Per-node model overrides
+category:
+  classification:
+    model: google_genai:gemini-2.5-flash-lite  # Fast model for category classification
+  validation:
+    model: google_genai:gemini-2.5-flash       # Better model for validation
+
+narratives:
+  classification:
+    model: google_genai:gemini-2.5-flash-lite  # Fast model for narrative classification
+  validation:
+    model: google_genai:gemini-2.5-flash       # Better model for validation
+
+subnarratives:
+  classification:
+    model: google_genai:gemini-2.5-flash-lite  # Fast model for subnarrative classification
+  validation:
+    model: google_genai:gemini-2.5-flash       # Better model for validation

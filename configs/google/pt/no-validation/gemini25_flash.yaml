@@ -1,0 +1,17 @@
+model_name: "google_genai:gemini-2.5-flash"
+
+# Use Russian testset folder (assumes RU subfolder exists)
+input_folder: "testset/PT/subtask-2-documents/"
+
+# Output file path; {model_name} will be expanded by run scripts if supported
+output_file: "results/{model_name}/results_pt_no_validation.txt"
+
+# Disable both narrative and subnarrative validation
+enable_narrative_validation: false
+enable_subnarrative_validation: false
+
+# Concurrency for batch runs
+max_concurrency: 10
+
+# Optional comment: tailored for Russian language inputs without any validation step
+# Keep timeouts, retries, or other overrides in caller scripts if needed

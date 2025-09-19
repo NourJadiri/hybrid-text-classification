@@ -1,0 +1,13 @@
+model_name: openai:gpt-4o-mini
+input_folder: testset/EN/subtask-2-documents/
+output_file: results/{model_name}/experiment_gpt4o_mini_narr_val.txt
+
+# Global settings
+enable_validation: false
+enable_cleaning: true
+
+# Granular validation settings
+enable_narrative_validation: false
+enable_subnarrative_validation: false
+
+max_concurrency: 20

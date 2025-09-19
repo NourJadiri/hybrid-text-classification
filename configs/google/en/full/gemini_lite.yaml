@@ -1,0 +1,26 @@
+model_name: google_genai:gemini-2.5-flash-lite
+
+input_folder: testset/EN/subtask-2-documents/
+output_file: results/gemini_mixed/en_results.txt
+enable_validation: true
+enable_cleaning: true
+max_concurrency: 10
+
+# Per-node model overrides
+category:
+  classification:
+    model: google_genai:gemini-2.5-flash-lite
+  validation:
+    model: google_genai:gemini-2.5-flash-lite
+
+narratives:
+  classification:
+    model: google_genai:gemini-2.5-flash-lite
+  validation:
+    model: google_genai:gemini-2.5-flash-lite
+
+subnarratives:
+  classification:
+    model: google_genai:gemini-2.5-flash-lite
+  validation:
+    model: google_genai:gemini-2.5-flash-lite

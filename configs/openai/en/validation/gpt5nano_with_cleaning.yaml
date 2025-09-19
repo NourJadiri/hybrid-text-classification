@@ -1,0 +1,18 @@
+model_name: openai:gpt-5-nano
+input_folder: testset/EN/subtask-2-documents/
+output_file: results/{model_name}/text_cleaning_narr_val.txt
+
+# Enable global validation (granular flags override this)
+enable_validation: true
+
+# Enable label cleaning (narrative/subnarrative cleaning nodes)
+enable_cleaning: true
+
+# Enable the optional text cleaning preprocessor
+enable_text_cleaning: true
+
+# Granular validation settings (narrative validation ON, subnarrative validation OFF)
+enable_narrative_validation: true
+enable_subnarrative_validation: false
+
+max_concurrency: 20

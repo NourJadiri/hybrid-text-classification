@@ -1,0 +1,13 @@
+model_name: openai:gpt-4o
+input_folder: testset/EN/subtask-2-documents/
+output_file: results/{model_name}/no_validation.txt
+
+# Disable validation globally (no narrative or subnarrative validation)
+enable_validation: false
+enable_narrative_validation: false
+enable_subnarrative_validation: false
+
+# Keep label cleaning enabled by default (change if you prefer)
+enable_cleaning: true
+
+max_concurrency: 20
