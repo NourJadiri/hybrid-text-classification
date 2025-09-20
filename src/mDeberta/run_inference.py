@@ -136,8 +136,8 @@ def run_inference(model_path, input_dir, output_file):
 
         # Format the predictions into semicolon-separated strings
         if not predicted_parents:
-            narrative_str = "Other"
-            subnarrative_str = "Other"
+            narratives_str = "Other"
+            subnarratives_str = "Other"
         else:
             narratives_str = ";".join(sorted(predicted_parents))
             subnarratives_str = ";".join(sorted(predicted_subnarratives))
