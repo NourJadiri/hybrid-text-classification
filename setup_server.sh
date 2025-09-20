@@ -9,12 +9,12 @@ echo "=== Starting server setup for hybrid-text-classification project ==="
 
 # Update and upgrade the system
 echo ">>> Updating and upgrading system packages..."
-sudo apt update -y
-sudo apt upgrade -y
+apt update -y
+apt upgrade -y
 
 # Install essential build tools and dependencies
 echo ">>> Installing essential build dependencies..."
-sudo apt install -y \
+apt install -y \
     build-essential \
     libssl-dev \
     zlib1g-dev \
