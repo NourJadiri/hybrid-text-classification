@@ -85,7 +85,7 @@ python -m venv .venv
 
 # Activate virtual environment
 echo ">>> Activating virtual environment..."
-source venv/bin/activate
+source .venv/bin/activate
 
 # Upgrade pip
 echo ">>> Upgrading pip..."
