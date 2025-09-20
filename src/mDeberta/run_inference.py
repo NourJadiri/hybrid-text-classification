@@ -1,240 +1,176 @@
 import os
 import json
 import torch
-import pandas as pd
-import numpy as np
-from tqdm.auto import tqdm
-from transformers import (
-    AutoTokenizer,
-    AutoModelForSequenceClassification,
-    AutoConfig
-)
+import re
+import argparse
+from tqdm import tqdm
+from transformers import AutoTokenizer
 
-# -----------------------------------------------------------------------------
-# Configuration
-# -----------------------------------------------------------------------------
-MODEL_PATH = 'models/mdeberta_narratives_classifier'
-ARTIFACTS_PATH = 'mdeberta_artifacts/'
-TEST_TEXTS_DIR = 'testset/EN/subtask-2-documents'  # Path to test documents
-OUTPUT_FILE = 'mdeberta_predictions.txt'
-THRESHOLD = 0.5  # Decision threshold for multi-label classification
-MAX_LENGTH = 512  # Same as training
+# Import the custom model class and the utility function
+from multihead_deberta import MultiHeadDebertaForHierarchicalClassification, sanitize_name
 
-# -----------------------------------------------------------------------------
-# Helper Functions
-# -----------------------------------------------------------------------------
-def load_model_and_artifacts():
-    """Load the trained model, tokenizer, and label mappings"""
-    print("Loading trained model and artifacts...")
-    
-    # Load label mappings
-    with open(os.path.join(ARTIFACTS_PATH, 'label_mappings.json'), 'r') as f:
+def run_inference(model_path, input_dir, output_file):
+    """
+    Runs inference on a directory of text files using a trained hierarchical model.
+
+    Args:
+        model_path (str): Path to the saved model directory.
+        input_dir (str): Path to the directory containing input .txt files.
+        output_file (str): Path to the output .tsv file.
+    """
+    # -------------------------------------------------------------------------
+    # 1. Setup and Configuration
+    # -------------------------------------------------------------------------
+    print("Step 1: Setting up configuration...")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    # -------------------------------------------------------------------------
+    # 2. Load Artifacts (Model, Tokenizer, Mappings, Threshold)
+    # -------------------------------------------------------------------------
+    print("Step 2: Loading model and artifacts...")
+
+    # Load training configuration to get the best threshold
+    try:
+        with open(os.path.join(model_path, 'training_config.json'), 'r') as f:
+            training_config = json.load(f)
+            threshold = training_config.get('best_threshold', 0.5)
+            print(f"Loaded best threshold from training: {threshold:.3f}")
+    except FileNotFoundError:
+        threshold = 0.5
+        print("Warning: training_config.json not found. Using default threshold of 0.5")
+
+    # Load hierarchical label mappings
+    with open(os.path.join(model_path, 'label_mappings_hierarchical.json'), 'r') as f:
         label_mappings = json.load(f)
-        label2id = label_mappings['label2id']
-        id2label = label_mappings['id2label']
-    
+        parent_label2id = label_mappings['parent_label2id']
+        # JSON keys are strings, so convert parent_id back to int for indexing
+        parent_id2label = {int(k): v for k, v in label_mappings['parent_id2label'].items()}
+        child_label_maps = label_mappings['child_label_maps']
+    print("Loaded hierarchical label mappings.")
+
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-    
-    # Load model
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
-    model.eval()  # Set to evaluation mode
-    
-    print(f"Model loaded with {len(id2label)} labels")
-    return model, tokenizer, label2id, id2label
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-def predict_text(text, model, tokenizer, id2label, threshold=0.5):
-    """Predict narratives for a single text"""
-    # Tokenize
-    inputs = tokenizer(
-        text,
-        truncation=True,
-        padding=True,
-        max_length=MAX_LENGTH,
-        return_tensors="pt"
+    # Load the custom model
+    # This is the key step: we must instantiate our custom class and provide the
+    # same arguments we used during training so it can build the heads correctly.
+    model = MultiHeadDebertaForHierarchicalClassification.from_pretrained(
+        model_path,
+        parent_label2id=parent_label2id,
+        child_label_maps=child_label_maps
     )
-    
-    # Move to device if available
-    device = next(model.parameters()).device
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-    
-    # Predict
-    with torch.no_grad():
-        outputs = model(**inputs)
-        logits = outputs.logits
-    
-    # Apply sigmoid and threshold
-    probabilities = torch.sigmoid(logits)
-    predictions = (probabilities >= threshold).int()
-    
-    # Convert to label names
-    predicted_labels = []
-    for i, pred in enumerate(predictions[0]):
-        if pred == 1:
-            predicted_labels.append(id2label[str(i)])
-    
-    return predicted_labels, probabilities[0].cpu().tolist()
+    model.to(device)
+    model.eval() # Set the model to evaluation mode
+    print("Model loaded and set to evaluation mode.")
 
-def process_test_files(test_dir, model, tokenizer, id2label, threshold=0.5):
-    """Process all test files and generate predictions"""
-    print(f"Processing test files from {test_dir}...")
-    
-    if not os.path.exists(test_dir):
-        raise FileNotFoundError(f"Test directory not found: {test_dir}")
-    
-    # Get all text files
-    text_files = [f for f in os.listdir(test_dir) if f.endswith('.txt')]
-    text_files.sort()  # Sort for consistent ordering
-    
-    print(f"Found {len(text_files)} test files")
-    
-    results = []
-    
-    for filename in tqdm(text_files, desc="Processing files"):
-        file_path = os.path.join(test_dir, filename)
-        
-        try:
-            # Read text content
-            with open(file_path, 'r', encoding='utf-8') as f:
-                text = f.read().strip()
-            
-            # Skip empty files
-            if not text:
-                print(f"Warning: Empty file {filename}")
-                results.append({
-                    'filename': filename,
-                    'narratives': ['Other'],
-                    'probabilities': []
-                })
-                continue
-            
-            # Make prediction
-            predicted_labels, probabilities = predict_text(
-                text, model, tokenizer, id2label, threshold
-            )
-            
-            # If no labels predicted, use "Other"
-            if not predicted_labels:
-                predicted_labels = ['Other']
-            
-            results.append({
-                'filename': filename,
-                'narratives': predicted_labels,
-                'probabilities': probabilities
-            })
-            
-        except Exception as e:
-            print(f"Error processing {filename}: {e}")
-            results.append({
-                'filename': filename,
-                'narratives': ['Other'],
-                'probabilities': []
-            })
-    
-    return results
+    # -------------------------------------------------------------------------
+    # 3. Find and Process Input Files
+    # -------------------------------------------------------------------------
+    print("Step 3: Finding and processing input text files...")
+    try:
+        text_files = [f for f in os.listdir(input_dir) if f.endswith('.txt')]
+        if not text_files:
+            print(f"Error: No .txt files found in directory '{input_dir}'")
+            return
+        print(f"Found {len(text_files)} text files to process.")
+    except FileNotFoundError:
+        print(f"Error: Input directory not found at '{input_dir}'")
+        return
 
-def save_predictions_tsv_format(results, output_file):
-    """Save predictions in TSV format with only narratives, subnarratives filled with 'Other'"""
-    print(f"Saving predictions to {output_file}...")
-    
+    all_predictions = []
+    for filename in tqdm(text_files, desc="Inferring"):
+        file_path = os.path.join(input_dir, filename)
+        with open(file_path, 'r', encoding='utf-8') as f:
+            text = f.read().strip()
+
+        # Tokenize the text for the model
+        inputs = tokenizer(
+            text,
+            return_tensors='pt',
+            padding='max_length',
+            truncation=True,
+            max_length=512 # Use the same max_length as in training
+        ).to(device)
+
+        # ---------------------------------------------------------------------
+        # 4. Run Inference and Decode Predictions
+        # ---------------------------------------------------------------------
+        with torch.no_grad(): # Disable gradient calculation for efficiency
+            outputs = model(**inputs)
+
+        # Unpack the logits from the model's output dictionary
+        parent_logits = outputs['parent_logits']
+        child_logits_dict = outputs['child_logits']
+
+        # Get parent predictions
+        parent_probs = torch.sigmoid(parent_logits).cpu().numpy().flatten()
+        parent_preds_indices = (parent_probs >= threshold).astype(int)
+
+        predicted_parents = []
+        predicted_subnarratives = []
+
+        # Loop through parent predictions to decode them
+        for i, is_present in enumerate(parent_preds_indices):
+            if is_present:
+                parent_name = parent_id2label[i]
+                predicted_parents.append(parent_name)
+
+                # If a parent is predicted, check for its children
+                if parent_name in child_label_maps:
+                    safe_key = sanitize_name(parent_name)
+                    child_logits = child_logits_dict[safe_key]
+                    child_probs = torch.sigmoid(child_logits).cpu().numpy().flatten()
+                    child_preds_indices = (child_probs >= threshold).astype(int)
+                    
+                    # Get the specific id->label map for this parent's children
+                    child_id2label = child_label_maps[parent_name]['id2label']
+
+                    # Loop through child predictions to decode them
+                    for j, child_is_present in enumerate(child_preds_indices):
+                        if child_is_present:
+                            # JSON keys are strings, so we access with str(j)
+                            child_name = child_id2label[str(j)]
+                            subnarrative = f"{parent_name}: {child_name}"
+                            predicted_subnarratives.append(subnarrative)
+
+        # Format the predictions into semicolon-separated strings
+        narratives_str = ";".join(sorted(predicted_parents))
+        subnarratives_str = ";".join(sorted(predicted_subnarratives))
+
+        all_predictions.append((filename, narratives_str, subnarratives_str))
+
+    # -------------------------------------------------------------------------
+    # 5. Write Output File
+    # -------------------------------------------------------------------------
+    print(f"Step 4: Writing {len(all_predictions)} predictions to '{output_file}'...")
     with open(output_file, 'w', encoding='utf-8') as f:
-        for result in results:
-            filename = result['filename']
-            narratives = result['narratives']
-            
-            # Join narratives with semicolons
-            narratives_str = ';'.join(narratives)
-            
-            # Always use "Other" for subnarratives column as requested
-            subnarratives_str = "Other"
-            
-            # Write in TSV format: filename\tnarratives\tsubnarratives
-            f.write(f"{filename}\t{narratives_str}\t{subnarratives_str}\n")
-    
-    print(f"Predictions saved to {output_file}")
-    print("Note: All subnarratives set to 'Other' as requested")
+        for filename, narratives, subnarratives in all_predictions:
+            f.write(f"{filename}\t{narratives}\t{subnarratives}\n")
 
-def save_detailed_predictions(results, output_file):
-    """Save detailed predictions with probabilities"""
-    detailed_output = output_file.replace('.txt', '_detailed.json')
-    
-    print(f"Saving detailed predictions to {detailed_output}...")
-    
-    with open(detailed_output, 'w', encoding='utf-8') as f:
-        json.dump(results, f, indent=2)
-    
-    print(f"Detailed predictions saved to {detailed_output}")
+    print("Inference complete!")
 
-def print_prediction_summary(results, id2label):
-    """Print a summary of predictions"""
-    print("\n" + "="*60)
-    print("PREDICTION SUMMARY")
-    print("="*60)
-    
-    total_files = len(results)
-    files_with_predictions = sum(1 for r in results if r['narratives'] != ['Other'])
-    files_with_other = total_files - files_with_predictions
-    
-    print(f"Total files processed: {total_files}")
-    print(f"Files with narrative predictions: {files_with_predictions}")
-    print(f"Files classified as 'Other': {files_with_other}")
-    
-    # Count label frequencies
-    label_counts = {}
-    for result in results:
-        for label in result['narratives']:
-            if label != 'Other':
-                label_counts[label] = label_counts.get(label, 0) + 1
-    
-    if label_counts:
-        print("\nMost frequent predicted narratives:")
-        sorted_labels = sorted(label_counts.items(), key=lambda x: x[1], reverse=True)
-        for label, count in sorted_labels[:10]:  # Show top 10
-            print(f"  {label}: {count} files")
-    
-    print("="*60)
 
-# -----------------------------------------------------------------------------
-# Main execution
-# -----------------------------------------------------------------------------
-def main():
-    print("Starting mDeberta Inference Pipeline")
-    print("="*50)
-    
-    # Check if model exists
-    if not os.path.exists(MODEL_PATH):
-        print(f"ERROR: Model not found at {MODEL_PATH}")
-        print("Please run the training script first to create the model.")
-        return
-    
-    # Load model and artifacts
-    try:
-        model, tokenizer, label2id, id2label = load_model_and_artifacts()
-    except Exception as e:
-        print(f"ERROR: Failed to load model: {e}")
-        return
-    
-    # Process test files
-    try:
-        results = process_test_files(
-            TEST_TEXTS_DIR, model, tokenizer, id2label, THRESHOLD
-        )
-    except Exception as e:
-        print(f"ERROR: Failed to process test files: {e}")
-        return
-    
-    # Save predictions in TSV format
-    save_predictions_tsv_format(results, OUTPUT_FILE)
-    
-    # Save detailed predictions with probabilities
-    save_detailed_predictions(results, OUTPUT_FILE)
-    
-    # Print summary
-    print_prediction_summary(results, id2label)
-    
-    print(f"\nInference completed successfully!")
-    print(f"Main output: {OUTPUT_FILE}")
-    print(f"Detailed output: {OUTPUT_FILE.replace('.txt', '_detailed.json')}")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Run inference with a hierarchical text classification model.")
+    parser.add_argument(
+        "--model_path",
+        type=str,
+        required=True,
+        help="Path to the directory containing the saved model and artifacts."
+    )
+    parser.add_argument(
+        "--input_dir",
+        type=str,
+        required=True,
+        help="Path to the directory containing the input .txt files."
+    )
+    parser.add_argument(
+        "--output_file",
+        type=str,
+        default="predictions.tsv",
+        help="Path to the output file where predictions will be saved (default: predictions.tsv)."
+    )
+    args = parser.parse_args()
 
-if __name__ == "__main__":
-    main()
+    run_inference(args.model_path, args.input_dir, args.output_file)
