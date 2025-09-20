@@ -84,9 +84,11 @@ def find_optimal_threshold(y_true, y_probs, search_range=(0.1, 0.9), steps=17):
 
 def compute_hierarchical_metrics(p):
     # 1. Unpack predictions and labels from the model output
-    parent_logits = p.predictions['parent_logits']
-    child_logits_dict = p.predictions['child_logits']
-    true_parent_labels = p.label_ids['parent_labels']
+    parent_logits = p.predictions[0]
+    child_logits_dict = p.predictions[1]
+    
+    label_ids_dict = dict(zip(label_columns, p.label_ids))
+    true_parent_labels = label_ids_dict['parent_labels']
     
     # 2. Reconstruct a flat ground truth matrix (y_true) for all labels
     # First, create a final mapping for all unique labels (parents and children)
@@ -115,7 +117,7 @@ def compute_hierarchical_metrics(p):
         for parent, child_info in child_label_maps.items():
             safe_key = sanitize_name(parent)
             child_label_key = f"child_labels_{safe_key}"
-            true_child_labels = p.label_ids[child_label_key]
+            true_child_labels = label_ids_dict[child_label_key]
             child_id2label = child_info['id2label']
             for cid_str, label in child_id2label.items():
                 cid = int(cid_str)
