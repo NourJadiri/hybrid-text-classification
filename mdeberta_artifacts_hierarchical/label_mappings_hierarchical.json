@@ -1,0 +1,364 @@
+{
+    "parent_label2id": {
+        "CC: Amplifying Climate Fears": 0,
+        "CC: Climate change is beneficial": 1,
+        "CC: Controversy about green technologies": 2,
+        "CC: Criticism of climate movement": 3,
+        "CC: Criticism of climate policies": 4,
+        "CC: Criticism of institutions and authorities": 5,
+        "CC: Downplaying climate change": 6,
+        "CC: Green policies are geopolitical instruments": 7,
+        "CC: Hidden plots by secret schemes of powerful groups": 8,
+        "CC: Questioning the measurements and science": 9,
+        "URW: Amplifying war-related fears": 10,
+        "URW: Blaming the war on others rather than the invader": 11,
+        "URW: Discrediting Ukraine": 12,
+        "URW: Discrediting the West, Diplomacy": 13,
+        "URW: Distrust towards Media": 14,
+        "URW: Hidden plots by secret schemes of powerful groups": 15,
+        "URW: Negative Consequences for the West": 16,
+        "URW: Overpraising the West": 17,
+        "URW: Praise of Russia": 18,
+        "URW: Russia is the Victim": 19,
+        "URW: Speculating war outcomes": 20
+    },
+    "parent_id2label": {
+        "0": "CC: Amplifying Climate Fears",
+        "1": "CC: Climate change is beneficial",
+        "2": "CC: Controversy about green technologies",
+        "3": "CC: Criticism of climate movement",
+        "4": "CC: Criticism of climate policies",
+        "5": "CC: Criticism of institutions and authorities",
+        "6": "CC: Downplaying climate change",
+        "7": "CC: Green policies are geopolitical instruments",
+        "8": "CC: Hidden plots by secret schemes of powerful groups",
+        "9": "CC: Questioning the measurements and science",
+        "10": "URW: Amplifying war-related fears",
+        "11": "URW: Blaming the war on others rather than the invader",
+        "12": "URW: Discrediting Ukraine",
+        "13": "URW: Discrediting the West, Diplomacy",
+        "14": "URW: Distrust towards Media",
+        "15": "URW: Hidden plots by secret schemes of powerful groups",
+        "16": "URW: Negative Consequences for the West",
+        "17": "URW: Overpraising the West",
+        "18": "URW: Praise of Russia",
+        "19": "URW: Russia is the Victim",
+        "20": "URW: Speculating war outcomes"
+    },
+    "child_label_maps": {
+        "URW: Russia is the Victim": {
+            "label2id": {
+                "URW: Russia is the Victim: Other": 0,
+                "URW: Russia is the Victim: Russia actions in Ukraine are only self-defence": 1,
+                "URW: Russia is the Victim: The West is russophobic": 2,
+                "URW: Russia is the Victim: UA is anti-RU extremists": 3
+            },
+            "id2label": {
+                "0": "URW: Russia is the Victim: Other",
+                "1": "URW: Russia is the Victim: Russia actions in Ukraine are only self-defence",
+                "2": "URW: Russia is the Victim: The West is russophobic",
+                "3": "URW: Russia is the Victim: UA is anti-RU extremists"
+            }
+        },
+        "URW: Discrediting Ukraine": {
+            "label2id": {
+                "URW: Discrediting Ukraine: Discrediting Ukrainian government and officials and policies": 0,
+                "URW: Discrediting Ukraine: Discrediting Ukrainian military": 1,
+                "URW: Discrediting Ukraine: Discrediting Ukrainian nation and society": 2,
+                "URW: Discrediting Ukraine: Other": 3,
+                "URW: Discrediting Ukraine: Rewriting Ukraine\u2019s history": 4,
+                "URW: Discrediting Ukraine: Situation in Ukraine is hopeless": 5,
+                "URW: Discrediting Ukraine: Ukraine is a hub for criminal activities": 6,
+                "URW: Discrediting Ukraine: Ukraine is a puppet of the West": 7,
+                "URW: Discrediting Ukraine: Ukraine is associated with nazism": 8
+            },
+            "id2label": {
+                "0": "URW: Discrediting Ukraine: Discrediting Ukrainian government and officials and policies",
+                "1": "URW: Discrediting Ukraine: Discrediting Ukrainian military",
+                "2": "URW: Discrediting Ukraine: Discrediting Ukrainian nation and society",
+                "3": "URW: Discrediting Ukraine: Other",
+                "4": "URW: Discrediting Ukraine: Rewriting Ukraine\u2019s history",
+                "5": "URW: Discrediting Ukraine: Situation in Ukraine is hopeless",
+                "6": "URW: Discrediting Ukraine: Ukraine is a hub for criminal activities",
+                "7": "URW: Discrediting Ukraine: Ukraine is a puppet of the West",
+                "8": "URW: Discrediting Ukraine: Ukraine is associated with nazism"
+            }
+        },
+        "URW: Blaming the war on others rather than the invader": {
+            "label2id": {
+                "URW: Blaming the war on others rather than the invader: Other": 0,
+                "URW: Blaming the war on others rather than the invader: The West are the aggressors": 1,
+                "URW: Blaming the war on others rather than the invader: Ukraine is the aggressor": 2
+            },
+            "id2label": {
+                "0": "URW: Blaming the war on others rather than the invader: Other",
+                "1": "URW: Blaming the war on others rather than the invader: The West are the aggressors",
+                "2": "URW: Blaming the war on others rather than the invader: Ukraine is the aggressor"
+            }
+        },
+        "URW: Discrediting the West, Diplomacy": {
+            "label2id": {
+                "URW: Discrediting the West, Diplomacy: Diplomacy does/will not work": 0,
+                "URW: Discrediting the West, Diplomacy: Other": 1,
+                "URW: Discrediting the West, Diplomacy: The EU is divided": 2,
+                "URW: Discrediting the West, Diplomacy: The West does not care about Ukraine, only about its interests": 3,
+                "URW: Discrediting the West, Diplomacy: The West is overreacting": 4,
+                "URW: Discrediting the West, Diplomacy: The West is weak": 5,
+                "URW: Discrediting the West, Diplomacy: West is tired of Ukraine": 6
+            },
+            "id2label": {
+                "0": "URW: Discrediting the West, Diplomacy: Diplomacy does/will not work",
+                "1": "URW: Discrediting the West, Diplomacy: Other",
+                "2": "URW: Discrediting the West, Diplomacy: The EU is divided",
+                "3": "URW: Discrediting the West, Diplomacy: The West does not care about Ukraine, only about its interests",
+                "4": "URW: Discrediting the West, Diplomacy: The West is overreacting",
+                "5": "URW: Discrediting the West, Diplomacy: The West is weak",
+                "6": "URW: Discrediting the West, Diplomacy: West is tired of Ukraine"
+            }
+        },
+        "CC: Criticism of institutions and authorities": {
+            "label2id": {
+                "CC: Criticism of institutions and authorities: Criticism of international entities": 0,
+                "CC: Criticism of institutions and authorities: Criticism of national governments": 1,
+                "CC: Criticism of institutions and authorities: Criticism of political organizations and figures": 2,
+                "CC: Criticism of institutions and authorities: Criticism of the EU": 3,
+                "CC: Criticism of institutions and authorities: Other": 4
+            },
+            "id2label": {
+                "0": "CC: Criticism of institutions and authorities: Criticism of international entities",
+                "1": "CC: Criticism of institutions and authorities: Criticism of national governments",
+                "2": "CC: Criticism of institutions and authorities: Criticism of political organizations and figures",
+                "3": "CC: Criticism of institutions and authorities: Criticism of the EU",
+                "4": "CC: Criticism of institutions and authorities: Other"
+            }
+        },
+        "CC: Criticism of climate policies": {
+            "label2id": {
+                "CC: Criticism of climate policies: Climate policies are ineffective": 0,
+                "CC: Criticism of climate policies: Climate policies are only for profit": 1,
+                "CC: Criticism of climate policies: Climate policies have negative impact on the economy": 2,
+                "CC: Criticism of climate policies: Other": 3
+            },
+            "id2label": {
+                "0": "CC: Criticism of climate policies: Climate policies are ineffective",
+                "1": "CC: Criticism of climate policies: Climate policies are only for profit",
+                "2": "CC: Criticism of climate policies: Climate policies have negative impact on the economy",
+                "3": "CC: Criticism of climate policies: Other"
+            }
+        },
+        "CC: Criticism of climate movement": {
+            "label2id": {
+                "CC: Criticism of climate movement: Ad hominem attacks on key activists": 0,
+                "CC: Criticism of climate movement: Climate movement is alarmist": 1,
+                "CC: Criticism of climate movement: Climate movement is corrupt": 2,
+                "CC: Criticism of climate movement: Other": 3
+            },
+            "id2label": {
+                "0": "CC: Criticism of climate movement: Ad hominem attacks on key activists",
+                "1": "CC: Criticism of climate movement: Climate movement is alarmist",
+                "2": "CC: Criticism of climate movement: Climate movement is corrupt",
+                "3": "CC: Criticism of climate movement: Other"
+            }
+        },
+        "CC: Hidden plots by secret schemes of powerful groups": {
+            "label2id": {
+                "CC: Hidden plots by secret schemes of powerful groups: Blaming global elites": 0,
+                "CC: Hidden plots by secret schemes of powerful groups: Climate agenda has hidden motives": 1,
+                "CC: Hidden plots by secret schemes of powerful groups: Other": 2
+            },
+            "id2label": {
+                "0": "CC: Hidden plots by secret schemes of powerful groups: Blaming global elites",
+                "1": "CC: Hidden plots by secret schemes of powerful groups: Climate agenda has hidden motives",
+                "2": "CC: Hidden plots by secret schemes of powerful groups: Other"
+            }
+        },
+        "CC: Controversy about green technologies": {
+            "label2id": {
+                "CC: Controversy about green technologies: Other": 0,
+                "CC: Controversy about green technologies: Renewable energy is costly": 1,
+                "CC: Controversy about green technologies: Renewable energy is dangerous": 2,
+                "CC: Controversy about green technologies: Renewable energy is unreliable": 3
+            },
+            "id2label": {
+                "0": "CC: Controversy about green technologies: Other",
+                "1": "CC: Controversy about green technologies: Renewable energy is costly",
+                "2": "CC: Controversy about green technologies: Renewable energy is dangerous",
+                "3": "CC: Controversy about green technologies: Renewable energy is unreliable"
+            }
+        },
+        "URW: Amplifying war-related fears": {
+            "label2id": {
+                "URW: Amplifying war-related fears: By continuing the war we risk WWIII": 0,
+                "URW: Amplifying war-related fears: NATO should/will directly intervene": 1,
+                "URW: Amplifying war-related fears: Other": 2,
+                "URW: Amplifying war-related fears: Russia will also attack other countries": 3,
+                "URW: Amplifying war-related fears: There is a real possibility that nuclear weapons will be employed": 4
+            },
+            "id2label": {
+                "0": "URW: Amplifying war-related fears: By continuing the war we risk WWIII",
+                "1": "URW: Amplifying war-related fears: NATO should/will directly intervene",
+                "2": "URW: Amplifying war-related fears: Other",
+                "3": "URW: Amplifying war-related fears: Russia will also attack other countries",
+                "4": "URW: Amplifying war-related fears: There is a real possibility that nuclear weapons will be employed"
+            }
+        },
+        "CC: Downplaying climate change": {
+            "label2id": {
+                "CC: Downplaying climate change: CO2 concentrations are too small to have an impact": 0,
+                "CC: Downplaying climate change: Climate cycles are natural": 1,
+                "CC: Downplaying climate change: Human activities do not impact climate change": 2,
+                "CC: Downplaying climate change: Humans and nature will adapt to the changes": 3,
+                "CC: Downplaying climate change: Ice is not melting": 4,
+                "CC: Downplaying climate change: Other": 5,
+                "CC: Downplaying climate change: Sea levels are not rising": 6,
+                "CC: Downplaying climate change: Temperature increase does not have significant impact": 7,
+                "CC: Downplaying climate change: Weather suggests the trend is global cooling": 8
+            },
+            "id2label": {
+                "0": "CC: Downplaying climate change: CO2 concentrations are too small to have an impact",
+                "1": "CC: Downplaying climate change: Climate cycles are natural",
+                "2": "CC: Downplaying climate change: Human activities do not impact climate change",
+                "3": "CC: Downplaying climate change: Humans and nature will adapt to the changes",
+                "4": "CC: Downplaying climate change: Ice is not melting",
+                "5": "CC: Downplaying climate change: Other",
+                "6": "CC: Downplaying climate change: Sea levels are not rising",
+                "7": "CC: Downplaying climate change: Temperature increase does not have significant impact",
+                "8": "CC: Downplaying climate change: Weather suggests the trend is global cooling"
+            }
+        },
+        "CC: Questioning the measurements and science": {
+            "label2id": {
+                "CC: Questioning the measurements and science: Data shows no temperature increase": 0,
+                "CC: Questioning the measurements and science: Greenhouse effect/carbon dioxide do not drive climate change": 1,
+                "CC: Questioning the measurements and science: Methodologies/metrics used are unreliable/faulty": 2,
+                "CC: Questioning the measurements and science: Other": 3,
+                "CC: Questioning the measurements and science: Scientific community is unreliable": 4
+            },
+            "id2label": {
+                "0": "CC: Questioning the measurements and science: Data shows no temperature increase",
+                "1": "CC: Questioning the measurements and science: Greenhouse effect/carbon dioxide do not drive climate change",
+                "2": "CC: Questioning the measurements and science: Methodologies/metrics used are unreliable/faulty",
+                "3": "CC: Questioning the measurements and science: Other",
+                "4": "CC: Questioning the measurements and science: Scientific community is unreliable"
+            }
+        },
+        "URW: Speculating war outcomes": {
+            "label2id": {
+                "URW: Speculating war outcomes: Other": 0,
+                "URW: Speculating war outcomes: Russian army is collapsing": 1,
+                "URW: Speculating war outcomes: Russian army will lose all the occupied territories": 2,
+                "URW: Speculating war outcomes: Ukrainian army is collapsing": 3
+            },
+            "id2label": {
+                "0": "URW: Speculating war outcomes: Other",
+                "1": "URW: Speculating war outcomes: Russian army is collapsing",
+                "2": "URW: Speculating war outcomes: Russian army will lose all the occupied territories",
+                "3": "URW: Speculating war outcomes: Ukrainian army is collapsing"
+            }
+        },
+        "URW: Distrust towards Media": {
+            "label2id": {
+                "URW: Distrust towards Media: Other": 0,
+                "URW: Distrust towards Media: Ukrainian media cannot be trusted": 1,
+                "URW: Distrust towards Media: Western media is an instrument of propaganda": 2
+            },
+            "id2label": {
+                "0": "URW: Distrust towards Media: Other",
+                "1": "URW: Distrust towards Media: Ukrainian media cannot be trusted",
+                "2": "URW: Distrust towards Media: Western media is an instrument of propaganda"
+            }
+        },
+        "URW: Praise of Russia": {
+            "label2id": {
+                "URW: Praise of Russia: Other": 0,
+                "URW: Praise of Russia: Praise of Russian President Vladimir Putin": 1,
+                "URW: Praise of Russia: Praise of Russian military might": 2,
+                "URW: Praise of Russia: Russia has international support from a number of countries and people": 3,
+                "URW: Praise of Russia: Russia is a guarantor of peace and prosperity": 4,
+                "URW: Praise of Russia: Russian invasion has strong national support": 5
+            },
+            "id2label": {
+                "0": "URW: Praise of Russia: Other",
+                "1": "URW: Praise of Russia: Praise of Russian President Vladimir Putin",
+                "2": "URW: Praise of Russia: Praise of Russian military might",
+                "3": "URW: Praise of Russia: Russia has international support from a number of countries and people",
+                "4": "URW: Praise of Russia: Russia is a guarantor of peace and prosperity",
+                "5": "URW: Praise of Russia: Russian invasion has strong national support"
+            }
+        },
+        "URW: Overpraising the West": {
+            "label2id": {
+                "URW: Overpraising the West: NATO will destroy Russia": 0,
+                "URW: Overpraising the West: Other": 1,
+                "URW: Overpraising the West: The West belongs in the right side of history": 2,
+                "URW: Overpraising the West: The West has the strongest international support": 3
+            },
+            "id2label": {
+                "0": "URW: Overpraising the West: NATO will destroy Russia",
+                "1": "URW: Overpraising the West: Other",
+                "2": "URW: Overpraising the West: The West belongs in the right side of history",
+                "3": "URW: Overpraising the West: The West has the strongest international support"
+            }
+        },
+        "URW: Hidden plots by secret schemes of powerful groups": {
+            "label2id": {
+                "URW: Hidden plots by secret schemes of powerful groups: Other": 0
+            },
+            "id2label": {
+                "0": "URW: Hidden plots by secret schemes of powerful groups: Other"
+            }
+        },
+        "URW: Negative Consequences for the West": {
+            "label2id": {
+                "URW: Negative Consequences for the West: Other": 0,
+                "URW: Negative Consequences for the West: Sanctions imposed by Western countries will backfire": 1,
+                "URW: Negative Consequences for the West: The conflict will increase the Ukrainian refugee flows to Europe": 2
+            },
+            "id2label": {
+                "0": "URW: Negative Consequences for the West: Other",
+                "1": "URW: Negative Consequences for the West: Sanctions imposed by Western countries will backfire",
+                "2": "URW: Negative Consequences for the West: The conflict will increase the Ukrainian refugee flows to Europe"
+            }
+        },
+        "CC: Green policies are geopolitical instruments": {
+            "label2id": {
+                "CC: Green policies are geopolitical instruments: Climate-related international relations are abusive/exploitative": 0,
+                "CC: Green policies are geopolitical instruments: Green activities are a form of neo-colonialism": 1,
+                "CC: Green policies are geopolitical instruments: Other": 2
+            },
+            "id2label": {
+                "0": "CC: Green policies are geopolitical instruments: Climate-related international relations are abusive/exploitative",
+                "1": "CC: Green policies are geopolitical instruments: Green activities are a form of neo-colonialism",
+                "2": "CC: Green policies are geopolitical instruments: Other"
+            }
+        },
+        "CC: Amplifying Climate Fears": {
+            "label2id": {
+                "CC: Amplifying Climate Fears: Amplifying existing fears of global warming": 0,
+                "CC: Amplifying Climate Fears: Doomsday scenarios for humans": 1,
+                "CC: Amplifying Climate Fears: Earth will be uninhabitable soon": 2,
+                "CC: Amplifying Climate Fears: Other": 3,
+                "CC: Amplifying Climate Fears: Whatever we do it is already too late": 4
+            },
+            "id2label": {
+                "0": "CC: Amplifying Climate Fears: Amplifying existing fears of global warming",
+                "1": "CC: Amplifying Climate Fears: Doomsday scenarios for humans",
+                "2": "CC: Amplifying Climate Fears: Earth will be uninhabitable soon",
+                "3": "CC: Amplifying Climate Fears: Other",
+                "4": "CC: Amplifying Climate Fears: Whatever we do it is already too late"
+            }
+        },
+        "CC: Climate change is beneficial": {
+            "label2id": {
+                "CC: Climate change is beneficial: CO2 is beneficial": 0,
+                "CC: Climate change is beneficial: Other": 1,
+                "CC: Climate change is beneficial: Temperature increase is beneficial": 2
+            },
+            "id2label": {
+                "0": "CC: Climate change is beneficial: CO2 is beneficial",
+                "1": "CC: Climate change is beneficial: Other",
+                "2": "CC: Climate change is beneficial: Temperature increase is beneficial"
+            }
+        }
+    }
+}

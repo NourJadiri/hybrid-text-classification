@@ -1,0 +1,38 @@
+{
+  "_data_files": [
+    {
+      "filename": "data-00000-of-00001.arrow"
+    }
+  ],
+  "_fingerprint": "e382f96f9c7f2eb9",
+  "_format_columns": [
+    "attention_mask",
+    "child_labels_cc_amplifying_climate_fears",
+    "child_labels_cc_climate_change_is_beneficial",
+    "child_labels_cc_controversy_about_green_technologies",
+    "child_labels_cc_criticism_of_climate_movement",
+    "child_labels_cc_criticism_of_climate_policies",
+    "child_labels_cc_criticism_of_institutions_and_authorities",
+    "child_labels_cc_downplaying_climate_change",
+    "child_labels_cc_green_policies_are_geopolitical_instruments",
+    "child_labels_cc_hidden_plots_by_secret_schemes_of_powerful_groups",
+    "child_labels_cc_questioning_the_measurements_and_science",
+    "child_labels_urw_amplifying_warrelated_fears",
+    "child_labels_urw_blaming_the_war_on_others_rather_than_the_invader",
+    "child_labels_urw_discrediting_the_west_diplomacy",
+    "child_labels_urw_discrediting_ukraine",
+    "child_labels_urw_distrust_towards_media",
+    "child_labels_urw_hidden_plots_by_secret_schemes_of_powerful_groups",
+    "child_labels_urw_negative_consequences_for_the_west",
+    "child_labels_urw_overpraising_the_west",
+    "child_labels_urw_praise_of_russia",
+    "child_labels_urw_russia_is_the_victim",
+    "child_labels_urw_speculating_war_outcomes",
+    "input_ids",
+    "parent_labels"
+  ],
+  "_format_kwargs": {},
+  "_format_type": "torch",
+  "_output_all_columns": false,
+  "_split": null
+}

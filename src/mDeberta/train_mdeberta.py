@@ -6,30 +6,36 @@ from datasets import load_from_disk
 from transformers import (
     AutoConfig,
     AutoTokenizer,
-    AutoModelForSequenceClassification,
-    TrainingArguments,
-    Trainer,
     EarlyStoppingCallback,
+    Trainer,
+    TrainingArguments,
 )
 from sklearn.metrics import f1_score
+
+from multihead_deberta import MultiHeadDebertaForHierarchicalClassification
 
 # -----------------------------------------------------------------------------
 # Configuration (mirrors your prior patterns)
 # -----------------------------------------------------------------------------
 MODEL_NAME = 'microsoft/mdeberta-v3-base'
-ARTIFACTS_PATH = 'mdeberta_artifacts/'
-FINAL_MODEL_PATH = f'models/{MODEL_NAME}_narratives_classifier'
-THRESHOLD = 0.5  # decision threshold for multi-label F1
+ARTIFACTS_PATH = 'mdeberta_artifacts_hierarchical/'
+FINAL_MODEL_PATH = f'models/{MODEL_NAME}_narratives_classifier_hierarchical'
+THRESHOLD = 0.5
 
-# Early stopping configuration
-EARLY_STOPPING_PATIENCE = 3  # Number of evaluations without improvement before stopping
-EARLY_STOPPING_THRESHOLD = 0.001  # Minimum improvement threshold
-MAX_EPOCHS = 10  # Maximum number of epochs (early stopping may end training sooner)
+EARLY_STOPPING_PATIENCE = 3
+EARLY_STOPPING_THRESHOLD = 0.001
+MAX_EPOCHS = 10
 
-# Threshold optimization configuration
-THRESHOLD_SEARCH_RANGE = (0.1, 0.9)  # Range of thresholds to search
-THRESHOLD_SEARCH_STEPS = 17  # Number of threshold values to test
+THRESHOLD_SEARCH_RANGE = (0.1, 0.9)
+THRESHOLD_SEARCH_STEPS = 17
 
+
+def sanitize_name(name):
+    """Creates a safe name for dictionary keys. Must be IDENTICAL to the one in preprocessing."""
+    import re
+    name = re.sub(r'[^\w\s]', '', name)
+    name = re.sub(r'\s+', '_', name)
+    return name.lower()
 
 # -----------------------------------------------------------------------------
 # Load preprocessed dataset and artifacts
@@ -37,171 +43,127 @@ THRESHOLD_SEARCH_STEPS = 17  # Number of threshold values to test
 print("Loading preprocessed dataset and artifacts...")
 
 # Load the tokenized dataset
-dataset = load_from_disk(os.path.join(ARTIFACTS_PATH, 'tokenized_dataset'))
-print(f"Loaded dataset: {dataset}")
+dataset = load_from_disk(os.path.join(ARTIFACTS_PATH, 'tokenized_dataset_hierarchical'))
+print(f"Loaded dataset")
+
+
 
 # Load class weights
-pos_weights = torch.load(os.path.join(ARTIFACTS_PATH, 'pos_weights.pt'))
-print(f"Loaded class weights with shape: {pos_weights.shape}")
+pos_weights_dict = torch.load(os.path.join(ARTIFACTS_PATH, 'pos_weights_hierarchical.pt'))
+print(f"Loaded class weights for {len(pos_weights_dict)} labels")
+
 
 # Load label mappings
-with open(os.path.join(ARTIFACTS_PATH, 'label_mappings.json'), 'r') as f:
+with open(os.path.join(ARTIFACTS_PATH, 'label_mappings_hierarchical.json'), 'r') as f:
     label_mappings = json.load(f)
-    label2id = label_mappings['label2id']
-    id2label = label_mappings['id2label']
-
-num_labels = len(label2id)
-print(f"Number of labels: {num_labels}")
-
-
-# -----------------------------------------------------------------------------
-# Custom Weighted BCE Loss Trainer with Threshold Tracking
-# -----------------------------------------------------------------------------
-class WeightedBCETrainer(Trainer):
-    def __init__(self, pos_weights, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.pos_weights = pos_weights.to(self.args.device if hasattr(self.args, 'device') else 'cpu')
-        self.best_threshold = THRESHOLD  # Track the best threshold found during training
-        self.threshold_history = []  # Track threshold history
+    parent_label2id = label_mappings['parent_label2id']
+    parent_id2label = {int(k): v for k, v in label_mappings['parent_id2label'].items()}
     
-    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
-        labels = inputs.pop("labels")
-        outputs = model(**inputs)
-        logits = outputs.logits
-        
-        # Move pos_weights to the same device as logits
-        pos_weights = self.pos_weights.to(logits.device)
-        
-        # Weighted BCE loss
-        loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weights)
-        loss = loss_fn(logits, labels.float())
-        
-        return (loss, outputs) if return_outputs else loss
-    
-    def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
-        """Override evaluate to track optimal thresholds."""
-        eval_result = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
-        
-        # Extract optimal threshold from evaluation results
-        if f"{metric_key_prefix}_optimal_threshold" in eval_result:
-            current_threshold = eval_result[f"{metric_key_prefix}_optimal_threshold"]
-            self.threshold_history.append({
-                'epoch': len(self.threshold_history) + 1,
-                'threshold': current_threshold,
-                'f1_sample': eval_result.get(f"{metric_key_prefix}_f1_sample", 0.0)
-            })
-            
-            # Update best threshold if this is the best F1 score so far
-            if (not hasattr(self, '_best_f1_sample') or 
-                eval_result.get(f"{metric_key_prefix}_f1_sample", 0.0) > self._best_f1_sample):
-                self._best_f1_sample = eval_result.get(f"{metric_key_prefix}_f1_sample", 0.0)
-                self.best_threshold = current_threshold
-                print(f"New best threshold found: {current_threshold:.3f} (F1 sample: {self._best_f1_sample:.4f})")
-        
-        return eval_result
+    child_label_maps = label_mappings['child_label_maps']
 
+num_parent_labels = len(parent_label2id)
+print(f"Number of parent labels: {num_parent_labels}")
 
 # -----------------------------------------------------------------------------
 # Threshold optimization and metrics computation
 # -----------------------------------------------------------------------------
-def find_optimal_threshold(y_true, y_probs, metric='f1_sample', search_range=(0.1, 0.9), steps=17):
-    """
-    Find optimal threshold by grid search to maximize the specified metric.
-    
-    Args:
-        y_true: Ground truth labels (numpy array)
-        y_probs: Predicted probabilities (numpy array) 
-        metric: Metric to optimize ('f1_sample', 'f1_micro', 'f1_macro')
-        search_range: (min_threshold, max_threshold) 
-        steps: Number of threshold values to test
-    
-    Returns:
-        best_threshold, best_score
-    """
+_BEST_THRESHOLD_TRACKER = {'threshold': THRESHOLD}
+
+def find_optimal_threshold(y_true, y_probs, search_range=(0.1, 0.9), steps=17):
     thresholds = np.linspace(search_range[0], search_range[1], steps)
-    best_score = 0.0
+    best_score = -1.0
     best_threshold = 0.5
-    
     for threshold in thresholds:
         y_pred = (y_probs >= threshold).astype(int)
-        
-        try:
-            if metric == 'f1_sample':
-                score = f1_score(y_true, y_pred, average='samples', zero_division=0)
-            elif metric == 'f1_micro':
-                score = f1_score(y_true, y_pred, average='micro', zero_division=0)
-            elif metric == 'f1_macro':
-                score = f1_score(y_true, y_pred, average='macro', zero_division=0)
-            else:
-                raise ValueError(f"Unsupported metric: {metric}")
-                
-            if score > best_score:
-                best_score = score
-                best_threshold = threshold
-        except Exception:
-            continue
-    
+        score = f1_score(y_true, y_pred, average='samples', zero_division=0)
+        if score > best_score:
+            best_score = score
+            best_threshold = threshold
     return best_threshold, best_score
 
 
-def compute_metrics_with_threshold_optimization(p):
-    """
-    Compute metrics with automatic threshold optimization for F1 sample score.
-    """
-    logits = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-    labels = p.label_ids
+def compute_hierarchical_metrics(p):
+    # 1. Unpack predictions and labels from the model output
+    parent_logits = p.predictions['parent_logits']
+    child_logits_dict = p.predictions['child_logits']
+    true_parent_labels = p.label_ids['parent_labels']
+    
+    # 2. Reconstruct a flat ground truth matrix (y_true) for all labels
+    # First, create a final mapping for all unique labels (parents and children)
+    flat_label2id = {}
+    next_id = 0
+    # Add parents
+    for label in sorted(parent_label2id.keys()):
+        if label not in flat_label2id: flat_label2id[label] = next_id; next_id += 1
+    # Add children
+    for parent, child_info in child_label_maps.items():
+        for child in sorted(child_info['label2id'].keys()):
+            full_child_label = f"{parent}:{child}"
+            if full_child_label not in flat_label2id: flat_label2id[full_child_label] = next_id; next_id += 1
+    
+    num_total_labels = len(flat_label2id)
+    num_samples = true_parent_labels.shape[0]
+    y_true = np.zeros((num_samples, num_total_labels), dtype=int)
 
-    # Convert to numpy arrays
-    y_true = labels.astype(int) if isinstance(labels, np.ndarray) else np.array(labels, dtype=int)
-    y_probs = torch.sigmoid(torch.tensor(logits)).cpu().numpy()
+    # Populate y_true
+    for i in range(num_samples):
+        # Parents
+        for pid, label in parent_id2label.items():
+            if true_parent_labels[i, pid] == 1:
+                y_true[i, flat_label2id[label]] = 1
+        # Children
+        for parent, child_info in child_label_maps.items():
+            safe_key = sanitize_name(parent)
+            child_label_key = f"child_labels_{safe_key}"
+            true_child_labels = p.label_ids[child_label_key]
+            child_id2label = child_info['id2label']
+            for cid_str, label in child_id2label.items():
+                cid = int(cid_str)
+                if true_child_labels[i, cid] == 1:
+                    full_child_label = f"{parent}:{label}"
+                    y_true[i, flat_label2id[full_child_label]] = 1
 
-    # Find optimal threshold for F1 sample score
-    optimal_threshold, optimal_f1_sample = find_optimal_threshold(
-        y_true, y_probs, metric='f1_sample', 
-        search_range=THRESHOLD_SEARCH_RANGE, 
-        steps=THRESHOLD_SEARCH_STEPS
-    )
+    # 3. Get parent probabilities and find an optimal threshold for them
+    parent_probs = torch.sigmoid(torch.tensor(parent_logits)).numpy()
+    # For simplicity, we optimize the threshold on parent predictions only,
+    # as this is the entry point to the hierarchy.
+    optimal_threshold, _ = find_optimal_threshold(true_parent_labels, parent_probs)
+    _BEST_THRESHOLD_TRACKER['threshold'] = optimal_threshold
     
-    # Compute predictions with optimal threshold
-    y_pred_optimal = (y_probs >= optimal_threshold).astype(int)
-    
-    # Compute all metrics with optimal threshold
-    try:
-        f1_micro_optimal = f1_score(y_true, y_pred_optimal, average='micro', zero_division=0)
-    except Exception:
-        f1_micro_optimal = 0.0
-    try:
-        f1_macro_optimal = f1_score(y_true, y_pred_optimal, average='macro', zero_division=0)
-    except Exception:
-        f1_macro_optimal = 0.0
-    
-    # Also compute metrics with default threshold for comparison
-    y_pred_default = (y_probs >= THRESHOLD).astype(int)
-    try:
-        f1_sample_default = f1_score(y_true, y_pred_default, average='samples', zero_division=0)
-    except Exception:
-        f1_sample_default = 0.0
-    try:
-        f1_micro_default = f1_score(y_true, y_pred_default, average='micro', zero_division=0)
-    except Exception:
-        f1_micro_default = 0.0
-    try:
-        f1_macro_default = f1_score(y_true, y_pred_default, average='macro', zero_division=0)
-    except Exception:
-        f1_macro_default = 0.0
+    # 4. Reconstruct a flat prediction matrix (y_pred) using the hierarchy
+    y_pred = np.zeros((num_samples, num_total_labels), dtype=int)
+    predicted_parents = (parent_probs >= optimal_threshold).astype(int)
+
+    for i in range(num_samples):
+        # Parents
+        for pid, is_present in enumerate(predicted_parents[i]):
+            if is_present:
+                parent_name = parent_id2label[pid]
+                y_pred[i, flat_label2id[parent_name]] = 1
+                
+                # Children (ONLY if parent is predicted)
+                if parent_name in child_label_maps:
+                    safe_key = sanitize_name(parent_name)
+                    child_probs = torch.sigmoid(torch.tensor(child_logits_dict[safe_key][i])).numpy()
+                    child_preds = (child_probs >= optimal_threshold).astype(int) # Use same threshold for simplicity
+                    
+                    child_id2label = child_label_maps[parent_name]['id2label']
+                    for cid_str, child_name in child_id2label.items():
+                        cid = int(cid_str)
+                        if child_preds[cid] == 1:
+                            full_child_label = f"{parent_name}:{child_name}"
+                            y_pred[i, flat_label2id[full_child_label]] = 1
+
+    # 5. Calculate final F1 scores on the flat matrices
+    f1_sample = f1_score(y_true, y_pred, average='samples', zero_division=0)
+    f1_micro = f1_score(y_true, y_pred, average='micro', zero_division=0)
+    f1_macro = f1_score(y_true, y_pred, average='macro', zero_division=0)
 
     return {
-        # Primary metrics (with optimal threshold)
-        'f1_sample': float(optimal_f1_sample),  # Primary metric for early stopping
-        'f1_micro': float(f1_micro_optimal),
-        'f1_macro': float(f1_macro_optimal),
-        'optimal_threshold': float(optimal_threshold),
-        
-        # Comparison metrics (with default threshold)
-        'f1_sample_default': float(f1_sample_default),
-        'f1_micro_default': float(f1_micro_default),
-        'f1_macro_default': float(f1_macro_default),
-        'default_threshold': float(THRESHOLD),
+        'f1_sample': f1_sample,
+        'f1_micro': f1_micro,
+        'f1_macro': f1_macro,
+        'optimal_threshold': optimal_threshold,
     }
 
 
@@ -216,125 +178,104 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 # Configure model for multi-label classification
 config = AutoConfig.from_pretrained(
     MODEL_NAME,
-    num_labels=num_labels,
-    label2id=label2id,
-    id2label=id2label,
     problem_type="multi_label_classification"
 )
 
 # Load model
-model = AutoModelForSequenceClassification.from_pretrained(
+model = MultiHeadDebertaForHierarchicalClassification.from_pretrained(
     MODEL_NAME,
-    config=config
+    config=config,
+    parent_label2id=parent_label2id,
+    child_label_maps=child_label_maps,
+    pos_weight_dict=pos_weights_dict
 )
 
-print(f"Model loaded with {num_labels} output labels")
+print(f"Model loaded with {num_parent_labels} output labels")
 
 
-# -----------------------------------------------------------------------------
-# Training Arguments
-# -----------------------------------------------------------------------------
+feature_columns = ['input_ids', 'attention_mask', 'token_type_ids'] 
+# All other columns must be labels
+label_columns = [col for col in dataset['train'].column_names if col not in feature_columns]
+
+print(f"Identified label columns for the Trainer: {label_columns}")
+
+
 training_args = TrainingArguments(
-    output_dir='./results',
-    num_train_epochs=MAX_EPOCHS,  # Max epochs - early stopping will handle convergence
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
+    output_dir='./results_hierarchical', # Use a new output dir
+    num_train_epochs=MAX_EPOCHS,
+    per_device_train_batch_size=8,  # May need to reduce batch size for larger models
+    per_device_eval_batch_size=8,
+    gradient_accumulation_steps=2, # Compensate for smaller batch size
     warmup_ratio=0.1,
-    logging_dir='./logs',
+    logging_dir='./logs_hierarchical',
     logging_steps=50,
     eval_strategy="epoch",
     save_strategy="epoch",
     load_best_model_at_end=True,
-    metric_for_best_model="f1_sample",
+    metric_for_best_model="f1_sample", # This must match a key in compute_metrics output
     greater_is_better=True,
-    save_total_limit=3,
+    save_total_limit=2,
     seed=42,
     dataloader_pin_memory=False,
+    label_names = label_columns
 )
+print("Training arguments configured.")
 
-print("Training arguments configured")
-print(f"Early stopping enabled - patience: {EARLY_STOPPING_PATIENCE}, threshold: {EARLY_STOPPING_THRESHOLD}")
-print(f"Threshold optimization enabled - range: {THRESHOLD_SEARCH_RANGE}, steps: {THRESHOLD_SEARCH_STEPS}")
-
-
-# -----------------------------------------------------------------------------
-# Initialize Trainer with Early Stopping
-# -----------------------------------------------------------------------------
-# Early stopping callback
 early_stopping = EarlyStoppingCallback(
-    early_stopping_patience=EARLY_STOPPING_PATIENCE,  # Stop if no improvement for N evaluations
-    early_stopping_threshold=EARLY_STOPPING_THRESHOLD  # Minimum improvement threshold
+    early_stopping_patience=EARLY_STOPPING_PATIENCE,
+    early_stopping_threshold=EARLY_STOPPING_THRESHOLD
 )
 
-trainer = WeightedBCETrainer(
-    pos_weights=pos_weights,
+# We now use the standard Trainer class!
+trainer = Trainer(
     model=model,
     args=training_args,
     train_dataset=dataset['train'],
     eval_dataset=dataset['test'],
-    compute_metrics=compute_metrics_with_threshold_optimization,
+    compute_metrics=compute_hierarchical_metrics,
     callbacks=[early_stopping],
 )
 
-print("Trainer initialized with weighted BCE loss, early stopping, and threshold optimization")
+print("Standard Trainer initialized for hierarchical model.")
 
 
-# -----------------------------------------------------------------------------
-# Training Loop
-# -----------------------------------------------------------------------------
 print("Starting training...")
 train_result = trainer.train()
 
 print("Training completed!")
 print(f"Training loss: {train_result.training_loss:.4f}")
-print(f"Best threshold found during training: {trainer.best_threshold:.3f}")
 
-# Evaluate on test set
 print("\nEvaluating on test set...")
 eval_result = trainer.evaluate()
 
-print("\nEvaluation Results:")
+print("\nFinal Evaluation Results:")
 for key, value in eval_result.items():
     print(f"{key}: {value:.4f}")
 
-# Print threshold optimization summary
-if trainer.threshold_history:
-    print(f"\nThreshold optimization summary:")
-    print(f"Best threshold: {trainer.best_threshold:.3f}")
-    print(f"Final threshold: {trainer.threshold_history[-1]['threshold']:.3f}")
-    print("Threshold evolution:")
-    for entry in trainer.threshold_history:
-        print(f"  Epoch {entry['epoch']}: threshold={entry['threshold']:.3f}, F1={entry['f1_sample']:.4f}")
+best_threshold = _BEST_THRESHOLD_TRACKER['threshold']
+print(f"\nBest threshold found during final evaluation: {best_threshold:.3f}")
 
 
-# -----------------------------------------------------------------------------
-# Save the final model
-# -----------------------------------------------------------------------------
 print("\nSaving the final model...")
-os.makedirs(os.path.dirname(FINAL_MODEL_PATH), exist_ok=True)
+os.makedirs(FINAL_MODEL_PATH, exist_ok=True)
 
-# Save model and tokenizer
+# The default save_model will now save our custom model's architecture and weights
 trainer.save_model(FINAL_MODEL_PATH)
 tokenizer.save_pretrained(FINAL_MODEL_PATH)
 
-# Save additional artifacts
+# Save the hierarchical mappings needed for inference
+with open(os.path.join(FINAL_MODEL_PATH, 'label_mappings_hierarchical.json'), 'w') as f:
+    json.dump(label_mappings, f, indent=4)
+
+# Save the final training configuration and metrics
 with open(os.path.join(FINAL_MODEL_PATH, 'training_config.json'), 'w') as f:
     json.dump({
         'model_name': MODEL_NAME,
-        'num_labels': num_labels,
-        'threshold': THRESHOLD,
-        'best_threshold': trainer.best_threshold,
-        'threshold_history': trainer.threshold_history,
-        'max_length': 512,  # From preprocessing
-        'early_stopping_patience': EARLY_STOPPING_PATIENCE,
-        'early_stopping_threshold': EARLY_STOPPING_THRESHOLD,
-        'max_epochs': MAX_EPOCHS,
-        'threshold_search_range': THRESHOLD_SEARCH_RANGE,
-        'threshold_search_steps': THRESHOLD_SEARCH_STEPS,
+        'best_threshold': best_threshold,
+        'max_length': 512,
         'training_args': training_args.to_dict(),
         'final_metrics': eval_result
     }, f, indent=4)
 
-print(f"Model saved to {FINAL_MODEL_PATH}")
+print(f"Model and artifacts saved to {FINAL_MODEL_PATH}")
 print("Training completed successfully!")
-
