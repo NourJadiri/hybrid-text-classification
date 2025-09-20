@@ -37,6 +37,12 @@ apt install -y \
     graphviz-dev \
     pkg-config
 
+# Configure git user settings
+echo ">>> Configuring git user settings..."
+git config --global user.name "Nour Jadiri"
+git config --global user.email "ick62377@gmail.com"
+echo "Git user configured: Nour Jadiri <ick62377@gmail.com>"
+
 # Install pyenv if not already installed
 echo ">>> Installing pyenv..."
 if [ ! -d "$HOME/.pyenv" ]; then
