@@ -131,8 +131,8 @@ def run_inference(model_path, input_dir, output_file):
                         if child_is_present:
                             # JSON keys are strings, so we access with str(j)
                             child_name = child_id2label[str(j)]
-                            subnarrative = f"{parent_name}: {child_name}"
-                            predicted_subnarratives.append(subnarrative)
+                            # child_name already contains the full hierarchical path
+                            predicted_subnarratives.append(child_name)
 
         # Format the predictions into semicolon-separated strings
         if not predicted_parents:
