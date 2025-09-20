@@ -71,13 +71,8 @@ echo ">>> Verifying Python installation..."
 python --version
 which python
 
-# Create project directory if it doesn't exist
-PROJECT_DIR="$HOME/hybrid-text-classification"
-if [ ! -d "$PROJECT_DIR" ]; then
-    mkdir -p "$PROJECT_DIR"
-fi
-
-cd "$PROJECT_DIR"
+# Assume we're running from within the project directory
+# No need to create or check directories - everything is already here
 
 # Create virtual environment
 echo ">>> Creating virtual environment..."
@@ -98,8 +93,7 @@ if [ -f "all-texts-unified.zip" ]; then
     unzip -o all-texts-unified.zip
     echo "Data extraction completed"
 else
-    echo "Warning: all-texts-unified.zip not found in current directory"
-    echo "Please ensure the data archive is uploaded to: $PROJECT_DIR"
+    echo "all-texts-unified.zip not found - skipping data extraction"
 fi
 
 # Install PyTorch first (for better dependency resolution)
@@ -112,13 +106,8 @@ pip install pygraphviz
 
 # Install requirements from requirements.txt
 echo ">>> Installing project dependencies..."
-if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
-    echo "All dependencies installed successfully"
-else
-    echo "Warning: requirements.txt not found"
-    echo "Please ensure requirements.txt is uploaded to: $PROJECT_DIR"
-fi
+pip install -r requirements.txt
+echo "All dependencies installed successfully"
 
 # Create activation script for convenience
 echo ">>> Creating convenience activation script..."
@@ -131,8 +120,7 @@ export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 
-cd ~/hybrid-text-classification
-source venv/bin/activate
+source .venv/bin/activate
 
 echo "Environment activated!"
 echo "Python version: $(python --version)"
@@ -151,7 +139,6 @@ echo ""
 echo "=== Setup completed successfully! ==="
 echo ""
 echo "To activate the environment in future sessions, run:"
-echo "  cd ~/hybrid-text-classification"
 echo "  source activate_env.sh"
 echo ""
 echo "Or manually:"
@@ -159,10 +146,9 @@ echo "  export PYENV_ROOT=\"\$HOME/.pyenv\""
 echo "  export PATH=\"\$PYENV_ROOT/bin:\$PATH\""
 echo "  eval \"\$(pyenv init --path)\""
 echo "  eval \"\$(pyenv init -)\""
-echo "  cd ~/hybrid-text-classification"
-echo "  source venv/bin/activate"
+echo "  source .venv/bin/activate"
 echo ""
-echo "Don't forget to upload the following files to ~/hybrid-text-classification/:"
+echo "All files should be in the current project directory:"
 echo "- all-texts-unified.zip (data archive)"
-echo "- requirements.txt (if not already present)"
+echo "- requirements.txt (dependencies)"
 echo "- Your training scripts and source code"
