@@ -135,8 +135,12 @@ def run_inference(model_path, input_dir, output_file):
                             predicted_subnarratives.append(subnarrative)
 
         # Format the predictions into semicolon-separated strings
-        narratives_str = ";".join(sorted(predicted_parents))
-        subnarratives_str = ";".join(sorted(predicted_subnarratives))
+        if not predicted_parents:
+            narrative_str = "Other"
+            subnarrative_str = "Other"
+        else:
+            narratives_str = ";".join(sorted(predicted_parents))
+            subnarratives_str = ";".join(sorted(predicted_subnarratives))
 
         all_predictions.append((filename, narratives_str, subnarratives_str))
 
