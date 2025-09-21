@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 import torch
 import argparse
 from tqdm import tqdm
@@ -9,7 +10,7 @@ from huggingface_hub import hf_hub_download, snapshot_download
 # Import the custom model class and the utility function
 from multihead_deberta import MultiHeadDebertaForHierarchicalClassification, sanitize_name
 
-def run_inference_from_hub(model_name, input_dir, output_file, threshold=0.5):
+def run_inference_from_hub(model_name, input_dir, output_file, threshold=None):
     """
     Runs inference on a directory of text files using a trained hierarchical model from HuggingFace Hub.
 
@@ -39,9 +40,15 @@ def run_inference_from_hub(model_name, input_dir, output_file, threshold=0.5):
     try:
         with open(os.path.join(model_path, 'training_config.json'), 'r') as f:
             training_config = json.load(f)
-            threshold = training_config.get('best_threshold', threshold)
-            print(f"Loaded best threshold from training: {threshold:.3f}")
+            training_threshold = training_config.get('best_threshold', 0.5)
+            if threshold is None:
+                threshold = training_threshold
+                print(f"Using best threshold from training: {threshold:.3f}")
+            else:
+                print(f"Using provided threshold: {threshold:.3f} (training threshold was {training_threshold:.3f})")
     except FileNotFoundError:
+        if threshold is None:
+            threshold = 0.5
         print(f"Warning: training_config.json not found. Using threshold: {threshold}")
 
     # Load hierarchical label mappings
@@ -157,7 +164,7 @@ def run_inference_from_hub(model_name, input_dir, output_file, threshold=0.5):
     print("Inference complete!")
 
 
-def run_inference_all_languages(model_name, devset_base_dir, output_dir, threshold=0.5):
+def run_inference_all_languages(model_name, devset_base_dir, output_dir, threshold=None):
     """
     Run inference on all languages in the devset.
     
@@ -169,8 +176,14 @@ def run_inference_all_languages(model_name, devset_base_dir, output_dir, thresho
     """
     languages = ['BG', 'EN', 'HI', 'PT', 'RU']
     
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
+    # Determine threshold folder name - we'll figure out actual threshold from first inference
+    if threshold is not None:
+        threshold_folder = str(threshold)
+    else:
+        threshold_folder = "0.65"  # Default training threshold, will be created correctly
+    
+    threshold_output_dir = os.path.join(output_dir, threshold_folder)
+    os.makedirs(threshold_output_dir, exist_ok=True)
     
     for lang in languages:
         print(f"\n{'='*60}")
@@ -178,7 +191,7 @@ def run_inference_all_languages(model_name, devset_base_dir, output_dir, thresho
         print(f"{'='*60}")
         
         input_dir = os.path.join(devset_base_dir, lang, 'subtask-2-documents')
-        output_file = os.path.join(output_dir, f"{lang}_predictions.tsv")
+        output_file = os.path.join(threshold_output_dir, f"{lang}_predictions.tsv")
         
         if not os.path.exists(input_dir):
             print(f"Warning: Input directory not found for {lang}: {input_dir}")
@@ -221,8 +234,8 @@ if __name__ == '__main__':
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.5,
-        help="Classification threshold (default: 0.5)."
+        default=None,
+        help="Classification threshold (default: use training threshold)."
     )
     parser.add_argument(
         "--all_languages",
@@ -231,7 +244,7 @@ if __name__ == '__main__':
     )
     
     args = parser.parse_args()
-
+    
     if args.all_languages:
         run_inference_all_languages(args.model_name, args.devset_dir, args.output_dir, args.threshold)
     elif args.input_dir:
