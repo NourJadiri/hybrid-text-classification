@@ -1,0 +1,9 @@
+model_name: google_genai:gemini-2.5-flash
+
+input_folder: devset/RU/subtask-2-documents/
+output_file: results/devset/gemini25_flash_no_val/ru_dev_results.txt
+enable_validation: false
+enable_narrative_validation: false
+enable_subnarrative_validation: false
+enable_cleaning: true
+max_concurrency: 20
