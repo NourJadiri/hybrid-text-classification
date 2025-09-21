@@ -213,21 +213,29 @@ def plot_confusion_matrix_summary(all_results, output_dir, threshold_folder):
                     all_cms[label]['recall'].append(recall)
                     all_cms[label]['f1'].append(f1)
         
-        # Create summary plot
+        # Create individual plots instead of 2x2 subplots
         if all_cms:
-            fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-            fig.suptitle(f'{label_type.capitalize()} Performance Summary Across Languages', fontsize=16)
+            plots_dir = os.path.join(output_dir, threshold_folder, 'plots', label_type)
+            os.makedirs(plots_dir, exist_ok=True)
             
             # Plot 1: F1 scores by label
+            plt.figure(figsize=(10, 8))
             labels = list(all_cms.keys())[:10]  # Top 10 labels
             avg_f1s = [np.mean(all_cms[label]['f1']) for label in labels]
             
-            axes[0, 0].barh(labels, avg_f1s)
-            axes[0, 0].set_xlabel('Average F1 Score')
-            axes[0, 0].set_title('Average F1 Score by Label')
-            axes[0, 0].set_xlim(0, 1)
+            plt.barh(labels, avg_f1s)
+            plt.xlabel('Average F1 Score')
+            plt.title(f'{label_type.capitalize()} - Average F1 Score by Label', fontsize=14, fontweight='bold')
+            plt.xlim(0, 1)
+            plt.tight_layout()
+            
+            plot_file = os.path.join(plots_dir, 'f1_score_by_label.png')
+            plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+            plt.close()
+            print(f"Saved plot: {plot_file}")
             
             # Plot 2: Performance by language
+            plt.figure(figsize=(10, 6))
             languages = set()
             for cms in all_cms.values():
                 languages.update(cms['languages'])
@@ -242,39 +250,53 @@ def plot_confusion_matrix_summary(all_results, output_dir, threshold_folder):
                             f1_scores.append(cms['f1'][i])
                 lang_avg_f1.append(np.mean(f1_scores) if f1_scores else 0)
             
-            axes[0, 1].bar(languages, lang_avg_f1)
-            axes[0, 1].set_ylabel('Average F1 Score')
-            axes[0, 1].set_title('Average F1 Score by Language')
-            axes[0, 1].set_ylim(0, 1)
+            plt.bar(languages, lang_avg_f1)
+            plt.ylabel('Average F1 Score')
+            plt.title(f'{label_type.capitalize()} - Average F1 Score by Language', fontsize=14, fontweight='bold')
+            plt.ylim(0, 1)
+            plt.tight_layout()
+            
+            plot_file = os.path.join(plots_dir, 'f1_score_by_language.png')
+            plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+            plt.close()
+            print(f"Saved plot: {plot_file}")
             
             # Plot 3: Precision vs Recall scatter
+            plt.figure(figsize=(8, 8))
             all_precision = []
             all_recall = []
             for cms in all_cms.values():
                 all_precision.extend(cms['precision'])
                 all_recall.extend(cms['recall'])
             
-            axes[1, 0].scatter(all_recall, all_precision, alpha=0.6)
-            axes[1, 0].plot([0, 1], [0, 1], 'r--', alpha=0.8)
-            axes[1, 0].set_xlabel('Recall')
-            axes[1, 0].set_ylabel('Precision')
-            axes[1, 0].set_title('Precision vs Recall')
-            axes[1, 0].set_xlim(0, 1)
-            axes[1, 0].set_ylim(0, 1)
+            plt.scatter(all_recall, all_precision, alpha=0.6)
+            plt.plot([0, 1], [0, 1], 'r--', alpha=0.8)
+            plt.xlabel('Recall')
+            plt.ylabel('Precision')
+            plt.title(f'{label_type.capitalize()} - Precision vs Recall', fontsize=14, fontweight='bold')
+            plt.xlim(0, 1)
+            plt.ylim(0, 1)
+            plt.tight_layout()
+            
+            plot_file = os.path.join(plots_dir, 'precision_vs_recall.png')
+            plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+            plt.close()
+            print(f"Saved plot: {plot_file}")
             
             # Plot 4: F1 distribution
+            plt.figure(figsize=(10, 6))
             all_f1 = []
             for cms in all_cms.values():
                 all_f1.extend(cms['f1'])
             
-            axes[1, 1].hist(all_f1, bins=20, alpha=0.7, edgecolor='black')
-            axes[1, 1].set_xlabel('F1 Score')
-            axes[1, 1].set_ylabel('Frequency')
-            axes[1, 1].set_title('F1 Score Distribution')
-            axes[1, 1].set_xlim(0, 1)
-            
+            plt.hist(all_f1, bins=20, alpha=0.7, edgecolor='black')
+            plt.xlabel('F1 Score')
+            plt.ylabel('Frequency')
+            plt.title(f'{label_type.capitalize()} - F1 Score Distribution', fontsize=14, fontweight='bold')
+            plt.xlim(0, 1)
             plt.tight_layout()
-            plot_file = os.path.join(output_dir, threshold_folder, 'plots', f'{label_type}_performance_summary.png')
+            
+            plot_file = os.path.join(plots_dir, 'f1_score_distribution.png')
             plt.savefig(plot_file, dpi=300, bbox_inches='tight')
             plt.close()
             print(f"Saved plot: {plot_file}")

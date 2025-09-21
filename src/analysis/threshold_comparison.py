@@ -71,15 +71,17 @@ def load_threshold_results(analysis_dir, thresholds):
     return results
 
 def create_comparison_plots(results, output_dir):
-    """Create comprehensive comparison plots."""
+    """Create comprehensive comparison plots organized in separate folders."""
     
-    os.makedirs(output_dir, exist_ok=True)
+    # Create separate folders for narratives and subnarratives
+    narratives_plots_dir = os.path.join(output_dir, 'plots', 'narratives')
+    subnarratives_plots_dir = os.path.join(output_dir, 'plots', 'subnarratives')
+    
+    os.makedirs(narratives_plots_dir, exist_ok=True)
+    os.makedirs(subnarratives_plots_dir, exist_ok=True)
     
     # Set up the plotting style
     plt.style.use('seaborn-v0_8')
-    
-    # 1. Overall F1 Macro comparison
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
     
     thresholds = sorted(results.keys(), key=float)
     
@@ -89,102 +91,81 @@ def create_comparison_plots(results, output_dir):
     subnarratives_f1_macro = [results[t]['subnarratives']['f1_macro'] for t in thresholds]
     subnarratives_f1_micro = [results[t]['subnarratives']['f1_micro'] for t in thresholds]
     
+    print("Creating individual plots...")
+    
     # Plot 1: Narratives F1 Macro
-    ax1.plot(thresholds, narratives_f1_macro, 'o-', linewidth=2, markersize=8, color='#2E86AB')
-    ax1.set_title('Narratives - F1 Macro Score vs Threshold', fontsize=14, fontweight='bold')
-    ax1.set_xlabel('Classification Threshold')
-    ax1.set_ylabel('F1 Macro Score')
-    ax1.grid(True, alpha=0.3)
-    ax1.set_ylim(0, max(narratives_f1_macro) * 1.1)
+    plt.figure(figsize=(10, 6))
+    plt.plot(thresholds, narratives_f1_macro, 'o-', linewidth=2, markersize=8, color='#2E86AB')
+    plt.title('Narratives - F1 Macro Score vs Threshold', fontsize=14, fontweight='bold')
+    plt.xlabel('Classification Threshold')
+    plt.ylabel('F1 Macro Score')
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, max(narratives_f1_macro) * 1.1)
     
     # Add value annotations
     for i, (x, y) in enumerate(zip(thresholds, narratives_f1_macro)):
-        ax1.annotate(f'{y:.3f}', (x, y), textcoords="offset points", 
-                    xytext=(0,10), ha='center', fontsize=10)
-    
-    # Plot 2: Narratives F1 Micro
-    ax2.plot(thresholds, narratives_f1_micro, 'o-', linewidth=2, markersize=8, color='#A23B72')
-    ax2.set_title('Narratives - F1 Micro Score vs Threshold', fontsize=14, fontweight='bold')
-    ax2.set_xlabel('Classification Threshold')
-    ax2.set_ylabel('F1 Micro Score')
-    ax2.grid(True, alpha=0.3)
-    ax2.set_ylim(0, max(narratives_f1_micro) * 1.1)
-    
-    # Add value annotations
-    for i, (x, y) in enumerate(zip(thresholds, narratives_f1_micro)):
-        ax2.annotate(f'{y:.3f}', (x, y), textcoords="offset points", 
-                    xytext=(0,10), ha='center', fontsize=10)
-    
-    # Plot 3: Subnarratives F1 Macro
-    ax3.plot(thresholds, subnarratives_f1_macro, 'o-', linewidth=2, markersize=8, color='#F18F01')
-    ax3.set_title('Subnarratives - F1 Macro Score vs Threshold', fontsize=14, fontweight='bold')
-    ax3.set_xlabel('Classification Threshold')
-    ax3.set_ylabel('F1 Macro Score')
-    ax3.grid(True, alpha=0.3)
-    ax3.set_ylim(0, max(subnarratives_f1_macro) * 1.1)
-    
-    # Add value annotations
-    for i, (x, y) in enumerate(zip(thresholds, subnarratives_f1_macro)):
-        ax3.annotate(f'{y:.3f}', (x, y), textcoords="offset points", 
-                    xytext=(0,10), ha='center', fontsize=10)
-    
-    # Plot 4: Subnarratives F1 Micro
-    ax4.plot(thresholds, subnarratives_f1_micro, 'o-', linewidth=2, markersize=8, color='#C73E1D')
-    ax4.set_title('Subnarratives - F1 Micro Score vs Threshold', fontsize=14, fontweight='bold')
-    ax4.set_xlabel('Classification Threshold')
-    ax4.set_ylabel('F1 Micro Score')
-    ax4.grid(True, alpha=0.3)
-    ax4.set_ylim(0, max(subnarratives_f1_micro) * 1.1)
-    
-    # Add value annotations
-    for i, (x, y) in enumerate(zip(thresholds, subnarratives_f1_micro)):
-        ax4.annotate(f'{y:.3f}', (x, y), textcoords="offset points", 
+        plt.annotate(f'{y:.3f}', (x, y), textcoords="offset points", 
                     xytext=(0,10), ha='center', fontsize=10)
     
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'threshold_comparison_overview.png'), 
+    plt.savefig(os.path.join(narratives_plots_dir, 'f1_macro_vs_threshold.png'), 
                 dpi=300, bbox_inches='tight')
     plt.close()
     
-    # 2. Per-language comparison heatmap
-    languages = ['BG', 'EN', 'HI', 'PT', 'RU']
+    # Plot 2: Narratives F1 Micro
+    plt.figure(figsize=(10, 6))
+    plt.plot(thresholds, narratives_f1_micro, 'o-', linewidth=2, markersize=8, color='#A23B72')
+    plt.title('Narratives - F1 Micro Score vs Threshold', fontsize=14, fontweight='bold')
+    plt.xlabel('Classification Threshold')
+    plt.ylabel('F1 Micro Score')
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, max(narratives_f1_micro) * 1.1)
     
-    # Create heatmaps for narratives and subnarratives F1 Macro
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-    
-    # Narratives heatmap data
-    narratives_data = []
-    subnarratives_data = []
-    
-    for lang in languages:
-        narratives_row = []
-        subnarratives_row = []
-        for threshold in thresholds:
-            if lang in results[threshold]['by_language']:
-                narratives_row.append(results[threshold]['by_language'][lang]['narratives']['f1_macro'])
-                subnarratives_row.append(results[threshold]['by_language'][lang]['subnarratives']['f1_macro'])
-            else:
-                narratives_row.append(0)
-                subnarratives_row.append(0)
-        narratives_data.append(narratives_row)
-        subnarratives_data.append(subnarratives_row)
-    
-    # Plot narratives heatmap
-    sns.heatmap(narratives_data, annot=True, fmt='.3f', cmap='YlOrRd', 
-                xticklabels=thresholds, yticklabels=languages, ax=ax1, cbar_kws={'label': 'F1 Macro Score'})
-    ax1.set_title('Narratives F1 Macro by Language and Threshold', fontsize=14, fontweight='bold')
-    ax1.set_xlabel('Classification Threshold')
-    ax1.set_ylabel('Language')
-    
-    # Plot subnarratives heatmap
-    sns.heatmap(subnarratives_data, annot=True, fmt='.3f', cmap='YlGnBu', 
-                xticklabels=thresholds, yticklabels=languages, ax=ax2, cbar_kws={'label': 'F1 Macro Score'})
-    ax2.set_title('Subnarratives F1 Macro by Language and Threshold', fontsize=14, fontweight='bold')
-    ax2.set_xlabel('Classification Threshold')
-    ax2.set_ylabel('Language')
+    # Add value annotations
+    for i, (x, y) in enumerate(zip(thresholds, narratives_f1_micro)):
+        plt.annotate(f'{y:.3f}', (x, y), textcoords="offset points", 
+                    xytext=(0,10), ha='center', fontsize=10)
     
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'threshold_comparison_by_language.png'), 
+    plt.savefig(os.path.join(narratives_plots_dir, 'f1_micro_vs_threshold.png'), 
+                dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Plot 3: Subnarratives F1 Macro
+    plt.figure(figsize=(10, 6))
+    plt.plot(thresholds, subnarratives_f1_macro, 'o-', linewidth=2, markersize=8, color='#F18F01')
+    plt.title('Subnarratives - F1 Macro Score vs Threshold', fontsize=14, fontweight='bold')
+    plt.xlabel('Classification Threshold')
+    plt.ylabel('F1 Macro Score')
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, max(subnarratives_f1_macro) * 1.1)
+    
+    # Add value annotations
+    for i, (x, y) in enumerate(zip(thresholds, subnarratives_f1_macro)):
+        plt.annotate(f'{y:.3f}', (x, y), textcoords="offset points", 
+                    xytext=(0,10), ha='center', fontsize=10)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(subnarratives_plots_dir, 'f1_macro_vs_threshold.png'), 
+                dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Plot 4: Subnarratives F1 Micro
+    plt.figure(figsize=(10, 6))
+    plt.plot(thresholds, subnarratives_f1_micro, 'o-', linewidth=2, markersize=8, color='#C73E1D')
+    plt.title('Subnarratives - F1 Micro Score vs Threshold', fontsize=14, fontweight='bold')
+    plt.xlabel('Classification Threshold')
+    plt.ylabel('F1 Micro Score')
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, max(subnarratives_f1_micro) * 1.1)
+    
+    # Add value annotations
+    for i, (x, y) in enumerate(zip(thresholds, subnarratives_f1_micro)):
+        plt.annotate(f'{y:.3f}', (x, y), textcoords="offset points", 
+                    xytext=(0,10), ha='center', fontsize=10)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(subnarratives_plots_dir, 'f1_micro_vs_threshold.png'), 
                 dpi=300, bbox_inches='tight')
     plt.close()
 
@@ -354,10 +335,16 @@ def main():
     print(f"{'='*80}")
     print(f"Results saved in: {args.output_dir}")
     print("Generated files:")
-    print("• threshold_comparison_overview.png - Overall performance trends")
-    print("• threshold_comparison_by_language.png - Per-language heatmaps")
+    print("📊 Data Files:")
     print("• threshold_comparison_summary.csv - Complete results table")
     print("• best_thresholds_summary.csv - Best threshold for each metric")
+    print("\n📈 Plot Folders:")
+    print("• plots/narratives/ - Narratives classification plots")
+    print("  - f1_macro_vs_threshold.png")
+    print("  - f1_micro_vs_threshold.png") 
+    print("• plots/subnarratives/ - Subnarratives classification plots")
+    print("  - f1_macro_vs_threshold.png")
+    print("  - f1_micro_vs_threshold.png")
 
 if __name__ == "__main__":
     main()
