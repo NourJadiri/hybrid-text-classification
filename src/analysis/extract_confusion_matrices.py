@@ -1,262 +1,237 @@
 #!/usr/bin/env python3
 """
-Extract and summarize confusion matrices for the optimal threshold (0.65)
+Generate comprehensive markdown analysis from Gemini 2.5 Flash detailed results
+Focuses on F1 Samples as the primary metric
 """
 
 import json
 import numpy as np
+import os
+import argparse
 from collections import defaultdict
 
-def load_results(file_path):
-    """Load detailed results JSON file"""
-    with open(file_path, 'r') as f:
-        return json.load(f)
-
-def aggregate_confusion_matrices(results, label_type='narratives'):
-    """Aggregate confusion matrices across all languages for a label type"""
+def load_detailed_results(results_dir):
+    """Load all detailed results JSON files from directory"""
+    language_results = {}
     
-    all_matrices = defaultdict(lambda: {'tp': 0, 'fp': 0, 'fn': 0, 'tn': 0, 'total_samples': 0})
-    
-    # Process each language
-    for lang_data in results['by_language']:
-        if label_type in lang_data and 'confusion_matrices' in lang_data[label_type]:
-            for label, cm_data in lang_data[label_type]['confusion_matrices'].items():
-                matrix = np.array(cm_data['matrix'])
-                
-                # Extract TP, FP, FN, TN from 2x2 confusion matrix
-                tn, fp, fn, tp = matrix.ravel()
-                
-                all_matrices[label]['tp'] += tp
-                all_matrices[label]['fp'] += fp
-                all_matrices[label]['fn'] += fn
-                all_matrices[label]['tn'] += tn
-                all_matrices[label]['total_samples'] += matrix.sum()
-    
-    return all_matrices
-
-def calculate_metrics(cm_data):
-    """Calculate precision, recall, F1 from confusion matrix data"""
-    tp, fp, fn, tn = cm_data['tp'], cm_data['fp'], cm_data['fn'], cm_data['tn']
-    
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-    
-    return precision, recall, f1
-
-def get_per_language_matrices(results, label_type='narratives'):
-    """Get confusion matrices organized by language"""
-    
-    language_matrices = {}
-    
-    # Process each language
-    for lang_data in results['by_language']:
-        language = lang_data['language']
-        language_matrices[language] = {}
-        
-        if label_type in lang_data and 'confusion_matrices' in lang_data[label_type]:
-            for label, cm_data in lang_data[label_type]['confusion_matrices'].items():
-                matrix = np.array(cm_data['matrix'])
-                
-                # Extract TP, FP, FN, TN from 2x2 confusion matrix
-                tn, fp, fn, tp = matrix.ravel()
-                
-                language_matrices[language][label] = {
-                    'tp': tp, 'fp': fp, 'fn': fn, 'tn': tn,
-                    'total_samples': matrix.sum()
-                }
-    
-    return language_matrices
-
-def format_confusion_matrix_table(matrices, label_type, top_n=10, title_suffix=""):
-    """Format confusion matrices as markdown table"""
-    
-    # Sort by F1 score (descending) and take top N
-    sorted_labels = []
-    for label, cm_data in matrices.items():
-        _, _, f1 = calculate_metrics(cm_data)
-        sorted_labels.append((label, f1, cm_data))
-    
-    sorted_labels.sort(key=lambda x: x[1], reverse=True)
-    top_labels = sorted_labels[:top_n]
-    
-    markdown = f"\n## Top {top_n} {label_type.capitalize()} - Confusion Matrix Analysis{title_suffix}\n\n"
-    markdown += "| Label | TP | FP | FN | TN | Precision | Recall | F1 Score |\n"
-    markdown += "|-------|----|----|----|----|-----------|--------|---------|\n"
-    
-    for label, f1, cm_data in top_labels:
-        tp, fp, fn, tn = cm_data['tp'], cm_data['fp'], cm_data['fn'], cm_data['tn']
-        precision, recall, f1_calc = calculate_metrics(cm_data)
-        
-        # Truncate long labels for better table formatting
-        display_label = label if len(label) <= 50 else label[:47] + "..."
-        
-        markdown += f"| {display_label} | {tp} | {fp} | {fn} | {tn} | {precision:.3f} | {recall:.3f} | {f1_calc:.3f} |\n"
-    
-    return markdown
-
-def format_per_language_tables(language_matrices, label_type, top_n=8):
-    """Format per-language confusion matrices as markdown tables"""
-    
-    markdown = f"\n## {label_type.capitalize()} Performance by Language\n\n"
-    
-    for language in sorted(language_matrices.keys()):
-        matrices = language_matrices[language]
-        
-        if not matrices:
-            continue
+    for filename in os.listdir(results_dir):
+        if filename.endswith('_detailed_results.json'):
+            language_code = filename.split('_')[0].upper()
+            filepath = os.path.join(results_dir, filename)
             
-        # Sort by F1 score (descending) and take top N
-        sorted_labels = []
-        for label, cm_data in matrices.items():
-            _, _, f1 = calculate_metrics(cm_data)
-            sorted_labels.append((label, f1, cm_data))
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                language_results[language_code] = data
+    
+    return language_results
+
+def format_per_language_performance_table(language_results, label_type, top_n=10):
+    """Generate per-language top N performance table focusing on F1 Samples"""
+    markdown = f"\n## {label_type.capitalize()} Performance by Language (Top {top_n})\n\n"
+    
+    for lang_code in sorted(language_results.keys()):
+        data = language_results[lang_code]
+        results = data['results']
+        model = data.get('model', 'Unknown')
+        total_files = results.get('total_files', 0)
         
-        sorted_labels.sort(key=lambda x: x[1], reverse=True)
+        if label_type not in results or 'per_label_metrics' not in results[label_type]:
+            continue
+        
+        per_label_metrics = results[label_type]['per_label_metrics']
+        
+        # Get overall language performance
+        f1_macro = results[label_type].get('f1_macro', 0)
+        f1_micro = results[label_type].get('f1_micro', 0)
+        f1_samples = results[label_type].get('f1_samples', 0)
+        total_labels = results[label_type].get('total_labels', 0)
+        
+        # Sort labels by F1 score (using individual label F1 as proxy for F1 Samples contribution)
+        sorted_labels = sorted(per_label_metrics.items(), key=lambda x: x[1]['f1'], reverse=True)
         top_labels = sorted_labels[:top_n]
         
-        markdown += f"\n### {language} - Top {min(top_n, len(top_labels))} {label_type.capitalize()}\n\n"
-        markdown += "| Label | TP | FP | FN | TN | Precision | Recall | F1 Score |\n"
-        markdown += "|-------|----|----|----|----|-----------|--------|---------|\n"
+        markdown += f"### {lang_code} ({model})\n\n"
+        markdown += f"**Overall Performance**: F1 Samples: {f1_samples:.4f} | F1 Macro: {f1_macro:.4f} | F1 Micro: {f1_micro:.4f} | Files: {total_files} | Labels: {total_labels}\n\n"
         
-        for label, f1, cm_data in top_labels:
-            tp, fp, fn, tn = cm_data['tp'], cm_data['fp'], cm_data['fn'], cm_data['tn']
-            precision, recall, f1_calc = calculate_metrics(cm_data)
+        markdown += "| Rank | Label | F1 Score | Precision | Recall | Support | TP | FP | FN | TN |\n"
+        markdown += "|------|-------|----------|-----------|--------|---------|----|----|----|----|"
+        
+        for i, (label, metrics) in enumerate(top_labels, 1):
+            f1 = metrics.get('f1', 0)
+            precision = metrics.get('precision', 0)
+            recall = metrics.get('recall', 0)
+            support = metrics.get('support', 0)
+            tp = metrics.get('tp', 0)
+            fp = metrics.get('fp', 0)
+            fn = metrics.get('fn', 0)
+            tn = metrics.get('tn', 0)
             
-            # Truncate long labels for better table formatting
-            display_label = label if len(label) <= 45 else label[:42] + "..."
+            # Truncate long labels for display
+            display_label = label[:60] + "..." if len(label) > 63 else label
             
-            markdown += f"| {display_label} | {tp} | {fp} | {fn} | {tn} | {precision:.3f} | {recall:.3f} | {f1_calc:.3f} |\n"
+            markdown += f"\n| {i:2d} | {display_label} | {f1:.3f} | {precision:.3f} | {recall:.3f} | {support:3d} | {tp:2d} | {fp:2d} | {fn:2d} | {tn:2d} |"
+        
+        markdown += "\n\n"
     
     return markdown
 
-def generate_summary_stats(matrices, label_type):
-    """Generate summary statistics for all labels"""
-    all_metrics = []
-    total_tp = total_fp = total_fn = total_tn = 0
+def format_language_comparison_table(language_results):
+    """Generate language comparison table focusing on F1 Samples"""
+    markdown = "\n## Language Performance Comparison\n\n"
+    markdown += "| Language | Model | Files | Narratives F1 Samples | Subnarratives F1 Samples | Narratives Labels | Subnarratives Labels |\n"
+    markdown += "|----------|-------|-------|----------------------|--------------------------|-------------------|----------------------|\n"
     
-    for label, cm_data in matrices.items():
-        precision, recall, f1 = calculate_metrics(cm_data)
-        all_metrics.append((precision, recall, f1))
+    # Collect performance data
+    performance_data = []
+    
+    for lang_code in sorted(language_results.keys()):
+        data = language_results[lang_code]
+        results = data['results']
+        model = data.get('model', 'Unknown')
+        total_files = results.get('total_files', 0)
         
-        total_tp += cm_data['tp']
-        total_fp += cm_data['fp'] 
-        total_fn += cm_data['fn']
-        total_tn += cm_data['tn']
-    
-    # Calculate aggregate metrics
-    if all_metrics:
-        precisions, recalls, f1s = zip(*all_metrics)
-        macro_precision = np.mean(precisions)
-        macro_recall = np.mean(recalls)
-        macro_f1 = np.mean(f1s)
+        narratives_f1_samples = results.get('narratives', {}).get('f1_samples', 0)
+        subnarratives_f1_samples = results.get('subnarratives', {}).get('f1_samples', 0)
+        narratives_labels = results.get('narratives', {}).get('total_labels', 0)
+        subnarratives_labels = results.get('subnarratives', {}).get('total_labels', 0)
         
-        # Micro-averaged metrics
-        micro_precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0
-        micro_recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0
-        micro_f1 = 2 * (micro_precision * micro_recall) / (micro_precision + micro_recall) if (micro_precision + micro_recall) > 0 else 0
-    else:
-        macro_precision = macro_recall = macro_f1 = 0
-        micro_precision = micro_recall = micro_f1 = 0
+        performance_data.append({
+            'language': lang_code,
+            'model': model,
+            'files': total_files,
+            'narratives_f1_samples': narratives_f1_samples,
+            'subnarratives_f1_samples': subnarratives_f1_samples,
+            'narratives_labels': narratives_labels,
+            'subnarratives_labels': subnarratives_labels
+        })
     
-    summary = f"\n### {label_type.capitalize()} Summary Statistics\n\n"
-    summary += f"- **Total Labels Analyzed**: {len(matrices)}\n"
-    summary += f"- **Total Samples**: {total_tp + total_fp + total_fn + total_tn}\n"
-    summary += f"- **Macro-averaged Precision**: {macro_precision:.3f}\n"
-    summary += f"- **Macro-averaged Recall**: {macro_recall:.3f}\n"
-    summary += f"- **Macro-averaged F1**: {macro_f1:.3f}\n"
-    summary += f"- **Micro-averaged Precision**: {micro_precision:.3f}\n"
-    summary += f"- **Micro-averaged Recall**: {micro_recall:.3f}\n"
-    summary += f"- **Micro-averaged F1**: {micro_f1:.3f}\n\n"
+    # Sort by combined F1 Samples performance
+    performance_data.sort(key=lambda x: (x['narratives_f1_samples'] + x['subnarratives_f1_samples']), reverse=True)
     
-    return summary
+    for perf in performance_data:
+        markdown += f"| {perf['language']} | {perf['model']} | {perf['files']} | {perf['narratives_f1_samples']:.4f} | {perf['subnarratives_f1_samples']:.4f} | {perf['narratives_labels']} | {perf['subnarratives_labels']} |\n"
+    
+    return markdown, performance_data
+
+def generate_language_insights(performance_data):
+    """Generate insights about language performance"""
+    markdown = "\n## Performance Insights\n\n"
+    
+    # Best performing language overall
+    best_overall = performance_data[0]
+    worst_overall = performance_data[-1]
+    
+    markdown += f"### Overall Performance Rankings\n\n"
+    markdown += f"**Best Overall Performance**: {best_overall['language']} (Combined F1 Samples: {best_overall['narratives_f1_samples'] + best_overall['subnarratives_f1_samples']:.4f})\n\n"
+    markdown += f"**Lowest Overall Performance**: {worst_overall['language']} (Combined F1 Samples: {worst_overall['narratives_f1_samples'] + worst_overall['subnarratives_f1_samples']:.4f})\n\n"
+    
+    # Best for narratives
+    best_narratives = max(performance_data, key=lambda x: x['narratives_f1_samples'])
+    markdown += f"**Best Narratives Performance**: {best_narratives['language']} (F1 Samples: {best_narratives['narratives_f1_samples']:.4f})\n\n"
+    
+    # Best for subnarratives
+    best_subnarratives = max(performance_data, key=lambda x: x['subnarratives_f1_samples'])
+    markdown += f"**Best Subnarratives Performance**: {best_subnarratives['language']} (F1 Samples: {best_subnarratives['subnarratives_f1_samples']:.4f})\n\n"
+    
+    # Performance distribution
+    narratives_scores = [p['narratives_f1_samples'] for p in performance_data]
+    subnarratives_scores = [p['subnarratives_f1_samples'] for p in performance_data]
+    
+    markdown += f"### Performance Statistics\n\n"
+    markdown += f"**Narratives F1 Samples**:\n"
+    markdown += f"- Average: {np.mean(narratives_scores):.4f}\n"
+    markdown += f"- Range: {min(narratives_scores):.4f} - {max(narratives_scores):.4f}\n"
+    markdown += f"- Standard Deviation: {np.std(narratives_scores):.4f}\n\n"
+    
+    markdown += f"**Subnarratives F1 Samples**:\n"
+    markdown += f"- Average: {np.mean(subnarratives_scores):.4f}\n"
+    markdown += f"- Range: {min(subnarratives_scores):.4f} - {max(subnarratives_scores):.4f}\n"
+    markdown += f"- Standard Deviation: {np.std(subnarratives_scores):.4f}\n\n"
+    
+    # Performance gaps
+    performance_gaps = [(p['narratives_f1_samples'] - p['subnarratives_f1_samples']) for p in performance_data]
+    avg_gap = np.mean(performance_gaps)
+    
+    markdown += f"### Narratives vs Subnarratives Performance Gap\n\n"
+    markdown += f"- Average gap (Narratives - Subnarratives): {avg_gap:.4f}\n"
+    markdown += f"- Languages with smallest gap: {min(performance_data, key=lambda x: abs(x['narratives_f1_samples'] - x['subnarratives_f1_samples']))['language']}\n"
+    markdown += f"- Languages with largest gap: {max(performance_data, key=lambda x: abs(x['narratives_f1_samples'] - x['subnarratives_f1_samples']))['language']}\n\n"
+    
+    return markdown
 
 def main():
-    # Load results
-    results_file = "../../results/analysis/0.65/detailed_results.json"
-    results = load_results(results_file)
+    parser = argparse.ArgumentParser(description="Generate Gemini 2.5 Flash results analysis")
+    parser.add_argument("--results_dir", type=str, required=True,
+                       help="Directory containing detailed results JSON files")
+    parser.add_argument("--output_file", type=str, default="gemini_flash_analysis.md",
+                       help="Output markdown file name")
+    parser.add_argument("--top_n", type=int, default=10,
+                       help="Number of top performing labels to show per language")
     
-    print("Extracting confusion matrices for threshold 0.65...")
+    args = parser.parse_args()
     
-    # Process narratives - aggregated
-    narrative_matrices = aggregate_confusion_matrices(results, 'narratives')
-    narrative_summary = generate_summary_stats(narrative_matrices, 'narratives')
-    narrative_table = format_confusion_matrix_table(narrative_matrices, 'narratives', 
-                                                   top_n=15, title_suffix=" (Aggregated - Threshold 0.65)")
+    if not os.path.exists(args.results_dir):
+        print(f"Error: Results directory not found: {args.results_dir}")
+        return
     
-    # Process narratives - per language
-    narrative_lang_matrices = get_per_language_matrices(results, 'narratives')
-    narrative_lang_tables = format_per_language_tables(narrative_lang_matrices, 'narratives', top_n=8)
+    print(f"Loading Gemini 2.5 Flash results from: {args.results_dir}")
     
-    # Process subnarratives - aggregated
-    subnarrative_matrices = aggregate_confusion_matrices(results, 'subnarratives')
-    subnarrative_summary = generate_summary_stats(subnarrative_matrices, 'subnarratives')
-    subnarrative_table = format_confusion_matrix_table(subnarrative_matrices, 'subnarratives', 
-                                                      top_n=15, title_suffix=" (Aggregated - Threshold 0.65)")
+    # Load all language results
+    language_results = load_detailed_results(args.results_dir)
     
-    # Process subnarratives - per language
-    subnarrative_lang_matrices = get_per_language_matrices(results, 'subnarratives')
-    subnarrative_lang_tables = format_per_language_tables(subnarrative_lang_matrices, 'subnarratives', top_n=8)
+    if not language_results:
+        print("No detailed results files found!")
+        return
     
-    # Generate complete markdown section
-    markdown_output = f"""
-# Confusion Matrix Analysis - Optimal Threshold (0.65)
+    print(f"Found results for languages: {', '.join(sorted(language_results.keys()))}")
+    
+    # Get experiment info
+    first_result = next(iter(language_results.values()))
+    experiment_name = first_result.get('experiment_name', 'Gemini 2.5 Flash Analysis')
+    model_name = first_result.get('model', 'Google Gemini 2.5 Flash')
+    
+    print("Generating analysis...")
+    
+    # Generate language comparison
+    language_comparison, performance_data = format_language_comparison_table(language_results)
+    
+    # Generate per-language analysis
+    narratives_analysis = format_per_language_performance_table(language_results, 'narratives', args.top_n)
+    subnarratives_analysis = format_per_language_performance_table(language_results, 'subnarratives', args.top_n)
+    
+    # Generate insights
+    insights = generate_language_insights(performance_data)
+    
+    # Create comprehensive markdown
+    markdown_output = f"""# Gemini 2.5 Flash Results Analysis
 
-This section provides detailed confusion matrix analysis for both narratives and subnarratives using the optimal threshold of 0.65. The analysis includes both aggregated results across all languages and detailed per-language breakdowns.
+**Experiment**: {experiment_name}  
+**Model**: {model_name}  
+**Languages Analyzed**: {', '.join(sorted(language_results.keys()))}  
+**Primary Metric**: F1 Samples  
 
-## Aggregated Results Across All Languages
+This analysis summarizes the performance of Gemini 2.5 Flash across different languages for hierarchical text classification.
 
-{narrative_summary}
-{narrative_table}
+{language_comparison}
 
-{subnarrative_summary}
-{subnarrative_table}
+{insights}
 
-## Per-Language Analysis
+{narratives_analysis}
 
-The following sections show how model performance varies across different languages, revealing language-specific strengths and challenges.
+{subnarratives_analysis}
 
-{narrative_lang_tables}
+## Summary
 
-{subnarrative_lang_tables}
-
-## Key Insights
-
-### Aggregated Performance
-- **Climate-related narratives** consistently show the strongest performance across languages
-- **War-related narratives** demonstrate moderate performance with higher variance
-- **Subnarratives** classification remains significantly more challenging than narratives
-
-### Language-Specific Observations
-- **Portuguese (PT)** typically shows strong performance, especially for climate narratives
-- **English (EN)** demonstrates balanced performance across different narrative types
-- **Hindi (HI)** shows particular challenges with certain narrative categories
-- **Bulgarian (BG) and Russian (RU)** exhibit similar performance patterns for war-related content
-
-### Cross-Linguistic Patterns
-- **Climate Fear narratives** perform consistently well across all languages
-- **"Other" categories** remain challenging regardless of language
-- **Sample size effects** are evident - languages with more examples show better performance
-- **Cultural/contextual factors** may influence performance for specific narrative types
-
-### Recommendations
-1. **Deploy with confidence** for climate-related narrative detection across all languages
-2. **Monitor closely** for war-related narratives, especially in low-resource scenarios
-3. **Consider language-specific tuning** for categories showing high variance
-4. **Collect additional data** for underperforming categories in specific languages
-
-This comprehensive analysis confirms that **threshold 0.65 provides optimal performance** across languages while revealing important insights for language-specific deployment strategies.
+This analysis provides a comprehensive view of Gemini 2.5 Flash performance across languages, focusing on F1 Samples as the primary evaluation metric. The results show language-specific performance patterns that can inform deployment strategies and model optimization efforts.
 """
     
     # Save to file
-    output_file = "confusion_matrix_analysis.md"
-    with open(output_file, 'w') as f:
+    with open(args.output_file, 'w', encoding='utf-8') as f:
         f.write(markdown_output)
     
-    print(f"Confusion matrix analysis saved to: {output_file}")
-    print(f"Total narratives analyzed: {len(narrative_matrices)}")
-    print(f"Total subnarratives analyzed: {len(subnarrative_matrices)}")
-    print(f"Languages analyzed: {sorted(narrative_lang_matrices.keys())}")
+    print(f"\nAnalysis saved to: {args.output_file}")
+    print(f"Languages analyzed: {sorted(language_results.keys())}")
+    print(f"Top {args.top_n} labels shown per language")
 
 if __name__ == "__main__":
     main()

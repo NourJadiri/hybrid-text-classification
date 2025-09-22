@@ -225,6 +225,304 @@ def analyze_single_evaluation(ground_truth_file, prediction_file, language_code,
     
     return results
 
+def analyze_detailed_results_per_language(results_dir, top_n=10):
+    """
+    Analyze detailed results files for per-language top narratives/subnarratives performance.
+    
+    Args:
+        results_dir: Directory containing the detailed results JSON files
+        top_n: Number of top performing labels to show per language
+    """
+    print(f"\n{'='*80}")
+    print("PER-LANGUAGE TOP NARRATIVES/SUBNARRATIVES ANALYSIS")
+    print(f"{'='*80}")
+    print(f"Results directory: {results_dir}")
+    print(f"Showing top {top_n} labels per language\n")
+    
+    # Find all detailed results files
+    language_files = {}
+    for filename in os.listdir(results_dir):
+        if filename.endswith('_detailed_results.json'):
+            language_code = filename.split('_')[0]
+            language_files[language_code] = os.path.join(results_dir, filename)
+    
+    if not language_files:
+        print("No detailed results files found!")
+        return
+    
+    print(f"Found results for languages: {', '.join(sorted(language_files.keys()))}")
+    
+    # Process each language
+    all_language_results = {}
+    
+    for language_code in sorted(language_files.keys()):
+        filepath = language_files[language_code]
+        print(f"\n{'-'*60}")
+        print(f"LANGUAGE: {language_code}")
+        print(f"{'-'*60}")
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            results = data['results']
+            model_name = data.get('model', 'Unknown')
+            total_files = results.get('total_files', 0)
+            
+            print(f"Model: {model_name}")
+            print(f"Total files analyzed: {total_files}")
+            
+            all_language_results[language_code] = {
+                'model': model_name,
+                'total_files': total_files,
+                'narratives': {},
+                'subnarratives': {}
+            }
+            
+            # Analyze narratives and subnarratives
+            for label_type in ['narratives', 'subnarratives']:
+                if label_type not in results:
+                    continue
+                    
+                print(f"\n--- {label_type.upper()} ---")
+                
+                label_data = results[label_type]
+                f1_macro = label_data.get('f1_macro', 0)
+                f1_micro = label_data.get('f1_micro', 0)
+                f1_samples = label_data.get('f1_samples', 0)
+                total_labels = label_data.get('total_labels', 0)
+                
+                print(f"Overall F1 Macro: {f1_macro:.4f}")
+                print(f"Overall F1 Micro: {f1_micro:.4f}")
+                print(f"Overall F1 Samples: {f1_samples:.4f}")
+                print(f"Total unique labels: {total_labels}")
+                
+                # Store overall metrics
+                all_language_results[language_code][label_type] = {
+                    'f1_macro': f1_macro,
+                    'f1_micro': f1_micro,
+                    'f1_samples': f1_samples,
+                    'total_labels': total_labels,
+                    'top_labels': []
+                }
+                
+                # Get per-label metrics
+                per_label_metrics = label_data.get('per_label_metrics', {})
+                
+                if per_label_metrics:
+                    # Sort by F1 score (descending)
+                    sorted_labels = sorted(
+                        per_label_metrics.items(),
+                        key=lambda x: x[1]['f1'],
+                        reverse=True
+                    )
+                    
+                    print(f"\nTop {min(top_n, len(sorted_labels))} {label_type} by F1 Score:")
+                    print("Rank | Label | F1 | Precision | Recall | Support | TP | FP | FN | TN")
+                    print("-" * 100)
+                    
+                    for i, (label, metrics) in enumerate(sorted_labels[:top_n], 1):
+                        f1 = metrics.get('f1', 0)
+                        precision = metrics.get('precision', 0)
+                        recall = metrics.get('recall', 0)
+                        support = metrics.get('support', 0)
+                        tp = metrics.get('tp', 0)
+                        fp = metrics.get('fp', 0)
+                        fn = metrics.get('fn', 0)
+                        tn = metrics.get('tn', 0)
+                        
+                        # Truncate long labels for display
+                        display_label = label[:45] + "..." if len(label) > 48 else label
+                        
+                        print(f"{i:4d} | {display_label:<48} | {f1:.3f} | {precision:9.3f} | {recall:6.3f} | {support:7d} | {tp:2d} | {fp:2d} | {fn:2d} | {tn:2d}")
+                        
+                        # Store for summary
+                        all_language_results[language_code][label_type]['top_labels'].append({
+                            'rank': i,
+                            'label': label,
+                            'f1': f1,
+                            'precision': precision,
+                            'recall': recall,
+                            'support': support,
+                            'tp': tp,
+                            'fp': fp,
+                            'fn': fn,
+                            'tn': tn
+                        })
+                    
+                    # Show labels with highest support (most frequent)
+                    sorted_by_support = sorted(
+                        per_label_metrics.items(),
+                        key=lambda x: x[1]['support'],
+                        reverse=True
+                    )
+                    
+                    print(f"\nTop {min(top_n, len(sorted_by_support))} most frequent {label_type}:")
+                    print("Rank | Label | Support | F1 | Precision | Recall")
+                    print("-" * 80)
+                    
+                    for i, (label, metrics) in enumerate(sorted_by_support[:top_n], 1):
+                        support = metrics.get('support', 0)
+                        f1 = metrics.get('f1', 0)
+                        precision = metrics.get('precision', 0)
+                        recall = metrics.get('recall', 0)
+                        
+                        # Truncate long labels for display
+                        display_label = label[:45] + "..." if len(label) > 48 else label
+                        print(f"{i:4d} | {display_label:<48} | {support:7d} | {f1:.3f} | {precision:9.3f} | {recall:6.3f}")
+                
+        except Exception as e:
+            print(f"Error processing {filepath}: {e}")
+            continue
+    
+    # Generate cross-language comparison
+    print(f"\n{'='*80}")
+    print("CROSS-LANGUAGE COMPARISON SUMMARY")
+    print(f"{'='*80}")
+    
+    # Create summary tables
+    for label_type in ['narratives', 'subnarratives']:
+        print(f"\n--- {label_type.upper()} COMPARISON ---")
+        
+        # Overall metrics comparison
+        print(f"\nOverall Performance Comparison:")
+        print("Language | F1 Macro | F1 Micro | F1 Samples | Total Labels | Files")
+        print("-" * 70)
+        
+        for lang in sorted(all_language_results.keys()):
+            data = all_language_results[lang][label_type]
+            f1_macro = data['f1_macro']
+            f1_micro = data['f1_micro']
+            f1_samples = data['f1_samples']
+            total_labels = data['total_labels']
+            total_files = all_language_results[lang]['total_files']
+            
+            print(f"{lang:8s} | {f1_macro:8.4f} | {f1_micro:8.4f} | {f1_samples:10.4f} | {total_labels:11d} | {total_files:5d}")
+        
+        # Best performing labels per language
+        print(f"\nBest performing {label_type} per language (Top 3):")
+        for lang in sorted(all_language_results.keys()):
+            top_labels = all_language_results[lang][label_type]['top_labels'][:3]
+            print(f"\n{lang}:")
+            for i, label_info in enumerate(top_labels, 1):
+                label = label_info['label']
+                f1 = label_info['f1']
+                support = label_info['support']
+                # Truncate for display
+                display_label = label[:60] + "..." if len(label) > 63 else label
+                print(f"  {i}. {display_label:<63} (F1: {f1:.3f}, Support: {support})")
+    
+    return all_language_results
+
+
+def create_per_language_comparison_plots(all_results, output_dir, top_n=10):
+    """Create visualization plots for per-language comparison."""
+    plots_dir = os.path.join(output_dir, 'per_language_plots')
+    os.makedirs(plots_dir, exist_ok=True)
+    
+    languages = sorted(all_results.keys())
+    
+    for label_type in ['narratives', 'subnarratives']:
+        # Overall performance comparison
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle(f'{label_type.capitalize()} - Per-Language Performance Comparison', 
+                    fontsize=16, fontweight='bold')
+        
+        # Extract metrics
+        f1_macro_scores = [all_results[lang][label_type]['f1_macro'] for lang in languages]
+        f1_micro_scores = [all_results[lang][label_type]['f1_micro'] for lang in languages]
+        f1_samples_scores = [all_results[lang][label_type]['f1_samples'] for lang in languages]
+        total_labels = [all_results[lang][label_type]['total_labels'] for lang in languages]
+        
+        # F1 Macro
+        bars1 = axes[0, 0].bar(languages, f1_macro_scores, color='skyblue')
+        axes[0, 0].set_title('F1 Macro Score by Language')
+        axes[0, 0].set_ylabel('F1 Score')
+        axes[0, 0].set_ylim(0, 1)
+        for bar, v in zip(bars1, f1_macro_scores):
+            axes[0, 0].text(bar.get_x() + bar.get_width()/2, v + 0.01, f'{v:.3f}', 
+                           ha='center', va='bottom')
+        
+        # F1 Micro
+        bars2 = axes[0, 1].bar(languages, f1_micro_scores, color='lightcoral')
+        axes[0, 1].set_title('F1 Micro Score by Language')
+        axes[0, 1].set_ylabel('F1 Score')
+        axes[0, 1].set_ylim(0, 1)
+        for bar, v in zip(bars2, f1_micro_scores):
+            axes[0, 1].text(bar.get_x() + bar.get_width()/2, v + 0.01, f'{v:.3f}', 
+                           ha='center', va='bottom')
+        
+        # F1 Samples
+        bars3 = axes[1, 0].bar(languages, f1_samples_scores, color='lightgreen')
+        axes[1, 0].set_title('F1 Samples Score by Language')
+        axes[1, 0].set_ylabel('F1 Score')
+        axes[1, 0].set_ylim(0, 1)
+        for bar, v in zip(bars3, f1_samples_scores):
+            axes[1, 0].text(bar.get_x() + bar.get_width()/2, v + 0.01, f'{v:.3f}', 
+                           ha='center', va='bottom')
+        
+        # Total labels
+        bars4 = axes[1, 1].bar(languages, total_labels, color='gold')
+        axes[1, 1].set_title('Total Unique Labels by Language')
+        axes[1, 1].set_ylabel('Number of Labels')
+        for bar, v in zip(bars4, total_labels):
+            axes[1, 1].text(bar.get_x() + bar.get_width()/2, v + 0.5, f'{v}', 
+                           ha='center', va='bottom')
+        
+        plt.tight_layout()
+        plot_file = os.path.join(plots_dir, f'{label_type}_per_language_comparison.png')
+        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved plot: {plot_file}")
+        
+        # Top performing labels heatmap for each language
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        # Get top labels across all languages
+        all_top_labels = set()
+        for lang in languages:
+            top_labels = all_results[lang][label_type]['top_labels'][:top_n//2]  # Fewer for readability
+            for label_info in top_labels:
+                all_top_labels.add(label_info['label'])
+        
+        # Create matrix
+        heatmap_data = []
+        label_names = []
+        
+        for label in sorted(all_top_labels):
+            row = []
+            for lang in languages:
+                # Find F1 score for this label in this language
+                f1_score = 0
+                for label_info in all_results[lang][label_type]['top_labels']:
+                    if label_info['label'] == label:
+                        f1_score = label_info['f1']
+                        break
+                row.append(f1_score)
+            heatmap_data.append(row)
+            # Truncate label names for display
+            display_name = label[:50] + "..." if len(label) > 53 else label
+            label_names.append(display_name)
+        
+        if heatmap_data:
+            sns.heatmap(heatmap_data, 
+                       xticklabels=languages, 
+                       yticklabels=label_names,
+                       annot=True, 
+                       fmt='.3f', 
+                       cmap='YlOrRd',
+                       ax=ax)
+            ax.set_title(f'{label_type.capitalize()} - Top Labels F1 Scores by Language')
+            plt.xticks(rotation=45)
+            plt.yticks(rotation=0)
+            plt.tight_layout()
+        
+        plot_file = os.path.join(plots_dir, f'{label_type}_top_labels_heatmap.png')
+        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved plot: {plot_file}")
+
+
 def create_performance_plots(all_results, output_dir, experiment_name="evaluation"):
     """Create comprehensive performance plots."""
     plots_dir = os.path.join(output_dir, 'plots')
@@ -329,11 +627,11 @@ def create_performance_plots(all_results, output_dir, experiment_name="evaluatio
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate hierarchical text classification predictions against ground truth")
-    parser.add_argument("--ground_truth", type=str, required=True,
+    parser.add_argument("--ground_truth", type=str,
                        help="Path to ground truth annotations file")
-    parser.add_argument("--predictions", type=str, required=True,
+    parser.add_argument("--predictions", type=str,
                        help="Path to predictions file")
-    parser.add_argument("--language", type=str, required=True,
+    parser.add_argument("--language", type=str,
                        help="Language code (e.g., EN, BG, HI, PT, RU)")
     parser.add_argument("--model_name", type=str, default="Unknown Model",
                        help="Name of the model being evaluated")
@@ -342,7 +640,81 @@ def main():
     parser.add_argument("--experiment_name", type=str, default="evaluation",
                        help="Name of this evaluation experiment")
     
+    # New argument for per-language analysis
+    parser.add_argument("--analyze_results_dir", type=str,
+                       help="Directory containing detailed results JSON files for per-language analysis")
+    parser.add_argument("--top_n", type=int, default=10,
+                       help="Number of top performing labels to show per language (default: 10)")
+    
     args = parser.parse_args()
+    
+    # Check if we're doing per-language analysis of existing results
+    if args.analyze_results_dir:
+        print("=" * 80)
+        print("ANALYZING EXISTING DETAILED RESULTS")
+        print("=" * 80)
+        
+        if not os.path.exists(args.analyze_results_dir):
+            print(f"Error: Results directory not found: {args.analyze_results_dir}")
+            return
+        
+        # Analyze detailed results per language
+        all_language_results = analyze_detailed_results_per_language(
+            args.analyze_results_dir, 
+            args.top_n
+        )
+        
+        if all_language_results:
+            # Create comparison plots
+            print(f"\nGenerating per-language comparison plots...")
+            create_per_language_comparison_plots(
+                all_language_results, 
+                args.output_dir, 
+                args.top_n
+            )
+            
+            # Save aggregated results
+            aggregated_file = os.path.join(args.output_dir, 'per_language_analysis_summary.json')
+            with open(aggregated_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'analysis_type': 'per_language_detailed_results',
+                    'source_directory': args.analyze_results_dir,
+                    'top_n': args.top_n,
+                    'languages_analyzed': list(all_language_results.keys()),
+                    'results': all_language_results
+                }, f, indent=2, ensure_ascii=False)
+            
+            print(f"\nAggregated analysis saved to: {aggregated_file}")
+            
+            # Create CSV summary
+            summary_rows = []
+            for lang in sorted(all_language_results.keys()):
+                for label_type in ['narratives', 'subnarratives']:
+                    data = all_language_results[lang][label_type]
+                    summary_rows.append({
+                        'Language': lang,
+                        'Label_Type': label_type,
+                        'F1_Macro': data['f1_macro'],
+                        'F1_Micro': data['f1_micro'],
+                        'F1_Samples': data['f1_samples'],
+                        'Total_Labels': data['total_labels'],
+                        'Total_Files': all_language_results[lang]['total_files'],
+                        'Model': all_language_results[lang]['model']
+                    })
+            
+            summary_df = pd.DataFrame(summary_rows)
+            summary_csv = os.path.join(args.output_dir, 'per_language_performance_summary.csv')
+            summary_df.to_csv(summary_csv, index=False)
+            print(f"Per-language summary CSV saved to: {summary_csv}")
+        
+        print(f"\n{'=' * 80}")
+        print("PER-LANGUAGE ANALYSIS COMPLETE!")
+        print(f"{'=' * 80}")
+        return
+    
+    # Original single evaluation functionality
+    if not args.ground_truth or not args.predictions or not args.language:
+        parser.error("For single evaluation, --ground_truth, --predictions, and --language are required")
     
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
