@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Batch evaluation script for Gemini 2.5 Flash devset predictions
-echo "========================================================================"
-echo "RUNNING COMPREHENSIVE EVALUATION FOR GEMINI 2.5 FLASH DEVSET PREDICTIONS"
-echo "========================================================================"
+# Batch evaluation script for Gemini 2.5 Flash narrative validation devset predictions
+echo "==============================================================================="
+echo "RUNNING EVALUATION FOR GEMINI 2.5 FLASH NARRATIVE VALIDATION DEVSET PREDICTIONS"
+echo "==============================================================================="
 
 # Create output directory
-OUTPUT_DIR="results/analysis/gemini25_flash_devset_evaluation"
+OUTPUT_DIR="results/analysis/gemini25_flash_narr_val_evaluation"
 mkdir -p "$OUTPUT_DIR"
 
 # Define languages and their corresponding files
@@ -19,9 +19,9 @@ declare -A languages=(
 )
 
 DEVSET_DIR="devset"
-PREDICTIONS_DIR="results/devset/gemini25_flash_no_val"
+PREDICTIONS_DIR="results/devset/gemini25_flash_narr_val"
 MODEL_NAME="Google Gemini 2.5 Flash"
-EXPERIMENT_NAME="Gemini 2.5 Flash - No Validation Devset"
+EXPERIMENT_NAME="Gemini 2.5 Flash - Narrative Validation Devset"
 
 echo "Configuration:"
 echo "  Model: $MODEL_NAME"
