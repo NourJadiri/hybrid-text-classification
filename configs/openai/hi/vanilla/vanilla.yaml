@@ -1,0 +1,16 @@
+# Vanilla Configuration - OpenAI GPT-5 Nano Hindi
+# Single agent, sequential classifiers (no multi-agent voting)
+model_name: "openai:gpt-5-nano"
+input_folder: "testset/HI/subtask-2-documents/"
+output_file: "results/{model_name}/hi_vanilla.txt"
+
+# Single agent settings (no multi-agent)
+num_narrative_agents: 1
+num_subnarrative_agents: 1
+aggregation_method: "union"
+
+# Standard settings
+enable_validation: false
+enable_cleaning: true
+enable_text_cleaning: false
+max_concurrency: 10
