@@ -10,6 +10,10 @@ class ClassificationState(TypedDict):
     subnarratives: NotRequired[List[Any]]
     file_id: str
     
+    # Multi-agent classification results
+    multi_agent_narratives: NotRequired[List[List[Any]]]  # Results from n agents
+    multi_agent_subnarratives: NotRequired[List[List[Any]]]  # Results from n agents
+    
     # Validation state fields
     narrative_validation_feedback: NotRequired[str]
     narrative_retry_count: NotRequired[int]

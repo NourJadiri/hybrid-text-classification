@@ -22,7 +22,11 @@ from graph_nodes import (
     validate_subnarratives_node,
     clean_subnarratives_node,
     write_results_node,
-    handle_empty_narratives_node
+    handle_empty_narratives_node,
+    multi_agent_classify_narratives_node,
+    multi_agent_classify_subnarratives_node,
+    aggregate_multi_agent_narratives,
+    aggregate_multi_agent_subnarratives
 )
 
 
@@ -53,6 +57,7 @@ class ConfigurableGraphBuilder:
         print(f"  Subnarrative Validation: {config.is_subnarrative_validation_enabled()}")
         print(f"  Label Cleaning: {config.enable_cleaning}")
         print(f"  Text Cleaning: {config.enable_text_cleaning}")
+        print(f"  Multi-agent: {config.num_agents} agents with {config.aggregation_method} aggregation")
         self._print_model_assignments()
     
     def _initialize_llms(self, config: ClassificationConfig) -> Dict[str, Any]:
@@ -122,9 +127,14 @@ class ConfigurableGraphBuilder:
     
     def _create_narratives_node(self):
         """Create narratives classification node wrapper."""
-        def _classify_narratives_node(state: ClassificationState) -> dict:
-            return classify_narratives_node(state, self.llms['narratives_classification'])
-        return _classify_narratives_node
+        if self.config.num_narrative_agents > 1:
+            async def _multi_agent_classify_narratives_node(state: ClassificationState) -> dict:
+                return await multi_agent_classify_narratives_node(state, self.llms['narratives_classification'], self.config.num_narrative_agents)
+            return _multi_agent_classify_narratives_node
+        else:
+            def _classify_narratives_node(state: ClassificationState) -> dict:
+                return classify_narratives_node(state, self.llms['narratives_classification'])
+            return _classify_narratives_node
     
     def _create_validate_narratives_node(self):
         """Create narratives validation node wrapper."""
@@ -140,9 +150,14 @@ class ConfigurableGraphBuilder:
     
     def _create_subnarratives_node(self):
         """Create subnarratives classification node wrapper."""
-        async def _classify_subnarratives_node(state: ClassificationState) -> dict:
-            return await classify_subnarratives_node(state, self.llms['subnarratives_classification'])
-        return _classify_subnarratives_node
+        if self.config.num_subnarrative_agents > 1:
+            async def _multi_agent_classify_subnarratives_node(state: ClassificationState) -> dict:
+                return await multi_agent_classify_subnarratives_node(state, self.llms['subnarratives_classification'], self.config.num_subnarrative_agents)
+            return _multi_agent_classify_subnarratives_node
+        else:
+            async def _classify_subnarratives_node(state: ClassificationState) -> dict:
+                return await classify_subnarratives_node(state, self.llms['subnarratives_classification'])
+            return _classify_subnarratives_node
     
     def _create_validate_subnarratives_node(self):
         """Create subnarratives validation node wrapper."""
@@ -155,6 +170,18 @@ class ConfigurableGraphBuilder:
         def _clean_subnarratives_node(state: ClassificationState) -> dict:
             return clean_subnarratives_node(state, self.flat_subnarratives)
         return _clean_subnarratives_node
+    
+    def _create_narrative_aggregation_node(self):
+        """Create narrative aggregation node wrapper for multi-agent results."""
+        def _aggregate_multi_agent_narratives(state: ClassificationState) -> dict:
+            return aggregate_multi_agent_narratives(state, self.config.aggregation_method)
+        return _aggregate_multi_agent_narratives
+    
+    def _create_subnarrative_aggregation_node(self):
+        """Create subnarrative aggregation node wrapper for multi-agent results."""
+        def _aggregate_multi_agent_subnarratives(state: ClassificationState) -> dict:
+            return aggregate_multi_agent_subnarratives(state, self.config.aggregation_method)
+        return _aggregate_multi_agent_subnarratives
     
     def _create_results_node(self):
         """Create results writing node wrapper."""
@@ -178,7 +205,9 @@ class ConfigurableGraphBuilder:
             retry_count = state.get("narrative_retry_count", 0)
             
             if feedback == "approved" or retry_count >= 3:
-                if self.config.enable_cleaning:
+                if self.config.num_narrative_agents > 1:
+                    return "aggregate_narratives"
+                elif self.config.enable_cleaning:
                     return "clean_narratives"
                 else:
                     return "subnarratives"
@@ -191,7 +220,9 @@ class ConfigurableGraphBuilder:
             retry_count = state.get("subnarrative_retry_count", 0)
             
             if feedback == "approved" or retry_count >= 3:
-                if self.config.enable_cleaning:
+                if self.config.num_subnarrative_agents > 1:
+                    return "aggregate_subnarratives"
+                elif self.config.enable_cleaning:
                     return "clean_subnarratives"
                 else:
                     return "write_results"
@@ -206,11 +237,31 @@ class ConfigurableGraphBuilder:
             else:
                 return "subnarratives"
         
+        def route_after_narrative_aggregation(state: ClassificationState) -> str:
+            """Route after aggregating multi-agent narrative results."""
+            if self.config.enable_cleaning:
+                return "clean_narratives"
+            else:
+                narratives = state.get("narratives", [])
+                if not narratives or all(n.narrative_name == "Other" for n in narratives):
+                    return "handle_empty_narratives"
+                else:
+                    return "subnarratives"
+        
+        def route_after_subnarrative_aggregation(state: ClassificationState) -> str:
+            """Route after aggregating multi-agent subnarrative results."""
+            if self.config.enable_cleaning:
+                return "clean_subnarratives"
+            else:
+                return "write_results"
+        
         return {
             "route_after_category": route_after_category_with_config,
             "route_after_narrative_validation": route_after_narrative_validation,
             "route_after_subnarrative_validation": route_after_subnarrative_validation,
-            "route_after_clean_narratives": route_after_clean_narratives
+            "route_after_clean_narratives": route_after_clean_narratives,
+            "route_after_narrative_aggregation": route_after_narrative_aggregation,
+            "route_after_subnarrative_aggregation": route_after_subnarrative_aggregation
         }
     
     def build_graph(self):
@@ -234,6 +285,12 @@ class ConfigurableGraphBuilder:
         builder.add_node("narratives", self._create_narratives_node())
         builder.add_node("subnarratives", self._create_subnarratives_node())
         builder.add_node("write_results", self._create_results_node())
+        
+        # Add aggregation nodes for multi-agent results
+        if self.config.num_narrative_agents > 1:
+            builder.add_node("aggregate_narratives", self._create_narrative_aggregation_node())
+        if self.config.num_subnarrative_agents > 1:
+            builder.add_node("aggregate_subnarratives", self._create_subnarrative_aggregation_node())
         
         # Conditionally add validation nodes based on granular settings
         if self.config.is_narrative_validation_enabled():
@@ -282,10 +339,18 @@ class ConfigurableGraphBuilder:
             builder.add_conditional_edges("validate_narratives", routing_functions["route_after_narrative_validation"])
         else:
             # Direct to next stage
-            if cleaning:
+            if self.config.num_narrative_agents > 1:
+                builder.add_edge("narratives", "aggregate_narratives")
+            elif cleaning:
                 builder.add_edge("narratives", "clean_narratives")
             else:
                 builder.add_edge("narratives", "subnarratives")
+        
+        # Aggregation flow (if multi-agent enabled)
+        if self.config.num_narrative_agents > 1:
+            builder.add_conditional_edges("aggregate_narratives", routing_functions["route_after_narrative_aggregation"])
+        if self.config.num_subnarrative_agents > 1:
+            builder.add_conditional_edges("aggregate_subnarratives", routing_functions["route_after_subnarrative_aggregation"])
         
         # Clean narratives flow (if enabled)
         if cleaning:
@@ -297,7 +362,9 @@ class ConfigurableGraphBuilder:
             builder.add_conditional_edges("validate_subnarratives", routing_functions["route_after_subnarrative_validation"])
         else:
             # Direct to next stage
-            if cleaning:
+            if self.config.num_subnarrative_agents > 1:
+                builder.add_edge("subnarratives", "aggregate_subnarratives")
+            elif cleaning:
                 builder.add_edge("subnarratives", "clean_subnarratives")
             else:
                 builder.add_edge("subnarratives", "write_results")
@@ -312,6 +379,9 @@ class ConfigurableGraphBuilder:
         print(f"  - Narrative validation: {narrative_validation}")
         print(f"  - Subnarrative validation: {subnarrative_validation}")
         print(f"  - Cleaning enabled: {cleaning}")
+        print(f"  - Multi-agent narratives: {self.config.num_narrative_agents} agents")
+        print(f"  - Multi-agent subnarratives: {self.config.num_subnarrative_agents} agents")
+        print(f"  - Aggregation method: {self.config.aggregation_method}")
     
     def get_execution_config(self) -> dict:
         """Get execution configuration for the graph."""

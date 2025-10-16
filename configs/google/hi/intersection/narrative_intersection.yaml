@@ -1,0 +1,15 @@
+# Multi-Agent Classification Configuration - Google Gemini Hindi Intersection
+model_name: "google_genai:gemini-2.5-flash"
+input_folder: "testset/HI/subtask-2-documents/"
+output_file: "results/{model_name}/hi_narrative_intersection.txt"
+
+# Multi-agent settings
+num_narrative_agents: 2  # Number of agents for narrative classification
+num_subnarrative_agents: 1 # Number of agents for subnarrative classification
+aggregation_method: "intersection"  # Options: "union" or "intersection"
+
+# Standard settings
+enable_validation: false
+enable_cleaning: true
+enable_text_cleaning: false
+max_concurrency: 10

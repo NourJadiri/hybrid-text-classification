@@ -1,0 +1,14 @@
+# Multi-Agent Classification Configuration
+model_name: "gemini-2.5-flash"
+input_folder: "testset/EN/subtask-2-documents/"
+output_file: "results/{model_name}/multi_agent_results.txt"
+
+# Multi-agent settings
+num_agents: 3  # Number of agents to run in parallel for narrative and subnarrative classification
+aggregation_method: "union"  # Options: "union" or "intersection"
+
+# Standard settings
+enable_validation: false
+enable_cleaning: true
+enable_text_cleaning: false
+max_concurrency: 6
