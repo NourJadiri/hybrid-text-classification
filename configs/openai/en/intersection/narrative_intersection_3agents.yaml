@@ -1,0 +1,15 @@
+# Multi-Agent Classification Configuration - OpenAI GPT-5 Nano English Narrative Intersection (3 Agents)
+model_name: "openai:gpt-5-nano"
+input_folder: "testset/EN/subtask-2-documents/"
+output_file: "results/{model_name}/en_narrative_intersection_3agents.txt"
+
+# Multi-agent settings
+num_narrative_agents: 3  # Number of agents for narrative classification
+num_subnarrative_agents: 1 # Number of agents for subnarrative classification
+aggregation_method: "intersection"  # Options: "union" or "intersection"
+
+# Standard settings
+enable_validation: false
+enable_cleaning: true
+enable_text_cleaning: false
+max_concurrency: 10

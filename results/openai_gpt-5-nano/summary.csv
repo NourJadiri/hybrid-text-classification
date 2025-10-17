@@ -1,22 +1,23 @@
-filename, f1 macro coarse, f1 samples
-bg_narrative_intersection.txt,0.57500,0.40300
-bg_narrative_union.txt,0.55800,0.37600
-bg_vanilla.txt,0.55000,0.37300
-en_vanilla.txt,0.50100,0.38900
-en_narrative_intersection.txt,0.52300,0.40800
-en_narrative_union.txt,0.49400,0.37500
-en_subnarrative_intersection.txt,0.50200,0.40700
-en_subnarrative_union.txt,0.49300,0.37600
-hi_narrative_intersection.txt,0.63200,0.55800
-hi_narrative_union.txt,0.55800,0.48700
-hi_vanilla.txt,0.55300,0.46800
-pt_narrative_intersection.txt,0.56400,0.35700
-pt_narrative_union.txt,0.60200,0.38500
-pt_vanilla.txt,0.56100,0.35200
-ru_narrative_intersection.txt,0.51700,0.37900
-ru_narrative_union.txt,0.55600,0.43700
-ru_vanilla.txt,0.53200,0.38100
-en_full_intersection.txt,0.51800,0.42400
-hi_full_intersection.txt,0.67300,0.58100
-ru_full_union.txt,0.57100,0.42800
-ru_full_mixed.txt,0.55500,0.38300
+Language,Config,f1 macro coarse,f1 samples
+BG,Vanilla,0.55000,0.37300
+BG,Narrative Intersection,0.57500,0.40300
+BG,Narrative Union,0.55800,0.37600
+EN,Vanilla,0.50100,0.38900
+EN,Narrative Intersection (2 agents),0.52300,0.40800
+EN,Narrative Intersection (3 agents),0.51800,0.39000
+EN,Narrative Intersection (4 agents),0.51000,0.38300
+EN,Subnarrative Intersection,0.50200,0.40700
+EN,Subnarrative Union,0.49300,0.37600
+HI,Vanilla,0.55300,0.46800
+HI,Narrative Intersection,0.63200,0.55800
+HI,Narrative Union,0.55800,0.48700
+PT,Vanilla,0.56100,0.35200
+PT,Narrative Intersection,0.56400,0.35700
+PT,Narrative Union,0.60200,0.38500
+RU,Vanilla,0.53200,0.38100
+RU,Narrative Intersection,0.51700,0.37900
+RU,Narrative Union,0.55600,0.43700
+EN,Full Intersection,0.51800,0.42400
+HI,Full Intersection,0.67300,0.58100
+RU,Full Union,0.57100,0.42800
+RU,Full Mixed,0.55500,0.38300
