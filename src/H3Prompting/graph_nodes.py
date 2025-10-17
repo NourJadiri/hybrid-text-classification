@@ -374,7 +374,7 @@ async def multi_agent_classify_subnarratives_node(state, llm, num_agents: int) -
     
     if not valid_parent_narratives:
         print(f"[graph] No valid narratives for subnarrative classification")
-        return {"multi_agent_subnarratives": []}
+        return {"multi_agent_subnarratives": [], "num_subnarrative_agents": num_agents}
     
     structured_llm = llm.with_structured_output(SubnarrativeClassificationOutput)
     
@@ -401,16 +401,20 @@ async def multi_agent_classify_subnarratives_node(state, llm, num_agents: int) -
     
     print(f"[graph] Multi-agent subnarratives classification complete")
     # Store as nested structure: [all_subnarratives] - single list for easier aggregation
-    return {"multi_agent_subnarratives": [all_subnarratives_from_all_agents]}
+    # Also store num_agents so aggregation can work correctly
+    return {"multi_agent_subnarratives": [all_subnarratives_from_all_agents], "num_subnarrative_agents": num_agents}
 
 
 def aggregate_multi_agent_narratives(state, method: str) -> dict:
     """
-    Aggregates multi-agent narrative classification results using intersection or union.
+    Aggregates multi-agent narrative classification results.
     
     Args:
         state: Current state containing multi-agent narrative results
-        method: "intersection" or "union"
+        method: Aggregation strategy
+            - "intersection": narratives appearing in ALL agents
+            - "union": narratives appearing in ANY agent
+            - "majority": narratives appearing in > 50% of agents
         
     Returns:
         Dictionary with aggregated narratives
@@ -434,11 +438,14 @@ def aggregate_multi_agent_narratives(state, method: str) -> dict:
 
 def aggregate_multi_agent_subnarratives(state, method: str) -> dict:
     """
-    Aggregates multi-agent subnarrative classification results using intersection or union.
+    Aggregates multi-agent subnarrative classification results.
     
     Args:
         state: Current state containing multi-agent subnarrative results
-        method: "intersection" or "union"
+        method: Aggregation strategy
+            - "intersection": subnarratives appearing in ALL agents
+            - "union": all unique subnarratives
+            - "majority": subnarratives appearing in > 50% of agents
         
     Returns:
         Dictionary with aggregated subnarratives
@@ -447,8 +454,10 @@ def aggregate_multi_agent_subnarratives(state, method: str) -> dict:
     
     # Aggregate subnarratives
     multi_agent_subnarratives = state.get("multi_agent_subnarratives", [])
+    num_agents = state.get("num_subnarrative_agents", 1)
+    
     if multi_agent_subnarratives:
-        aggregated_subnarratives = _aggregate_subnarratives(multi_agent_subnarratives, method)
+        aggregated_subnarratives = _aggregate_subnarratives(multi_agent_subnarratives, method, num_agents)
     else:
         aggregated_subnarratives = state.get("subnarratives", [])
     
@@ -463,9 +472,18 @@ def aggregate_multi_agent_subnarratives(state, method: str) -> dict:
 def _aggregate_narratives(multi_agent_results, method: str):
     """
     Aggregate narrative results from multiple agents.
+    
+    Args:
+        multi_agent_results: List of narrative lists from each agent
+        method: "intersection", "union", or "majority"
+            - intersection: narratives appearing in ALL agents
+            - union: narratives appearing in ANY agent
+            - majority: narratives appearing in > 50% of agents
     """
     if not multi_agent_results:
         return []
+    
+    num_agents = len(multi_agent_results)
     
     if method == "intersection":
         # Find narratives that appear in ALL agent results
@@ -487,6 +505,26 @@ def _aggregate_narratives(multi_agent_results, method: str):
             if narrative.narrative_name in common_narratives:
                 result.append(narrative)
         return result
+    
+    elif method == "majority":
+        # Find narratives that appear in > 50% of agents
+        narrative_counts = {}
+        narrative_objects = {}
+        
+        for agent_results in multi_agent_results:
+            for narrative in agent_results:
+                name = narrative.narrative_name
+                narrative_counts[name] = narrative_counts.get(name, 0) + 1
+                if name not in narrative_objects:
+                    narrative_objects[name] = narrative
+        
+        # Keep narratives that appear in majority of agents (> 50%)
+        majority_threshold = num_agents / 2
+        result = []
+        for name, count in narrative_counts.items():
+            if count > majority_threshold:
+                result.append(narrative_objects[name])
+        return result
         
     else:  # union
         # Find narratives that appear in ANY agent result
@@ -499,10 +537,18 @@ def _aggregate_narratives(multi_agent_results, method: str):
         return list(seen_narratives.values())
 
 
-def _aggregate_subnarratives(multi_agent_results, method: str):
+def _aggregate_subnarratives(multi_agent_results, method: str, num_agents: int):
     """
     Aggregate subnarrative results from multiple agents.
     Note: multi_agent_results is now a list containing a single list of all subnarratives.
+    
+    Args:
+        multi_agent_results: List containing flat list of all subnarratives from all agents
+        method: "intersection", "union", or "majority"
+            - intersection: subnarratives appearing in ALL agents
+            - union: all unique subnarratives
+            - majority: subnarratives appearing in > 50% of agents
+        num_agents: Number of agents used for classification
     """
     if not multi_agent_results or not multi_agent_results[0]:
         return []
@@ -511,7 +557,7 @@ def _aggregate_subnarratives(multi_agent_results, method: str):
     all_subnarratives = multi_agent_results[0]
     
     if method == "intersection":
-        # Find subnarratives that appear multiple times (indicating agreement between agents)
+        # Find subnarratives that appear in ALL agents
         subnarrative_counts = {}
         subnarrative_objects = {}
         
@@ -520,10 +566,29 @@ def _aggregate_subnarratives(multi_agent_results, method: str):
             subnarrative_counts[name] = subnarrative_counts.get(name, 0) + 1
             subnarrative_objects[name] = subnarrative
         
-        # For intersection, we want subnarratives that appeared multiple times
+        # For intersection, we want subnarratives that appeared in ALL agents
         result = []
         for name, count in subnarrative_counts.items():
-            if count > 1:  # Appeared in multiple agent results
+            if count >= num_agents:  # Appeared in all agents
+                result.append(subnarrative_objects[name])
+        return result
+    
+    elif method == "majority":
+        # Find subnarratives that appear in majority of agents
+        subnarrative_counts = {}
+        subnarrative_objects = {}
+        
+        for subnarrative in all_subnarratives:
+            name = subnarrative.subnarrative_name
+            subnarrative_counts[name] = subnarrative_counts.get(name, 0) + 1
+            subnarrative_objects[name] = subnarrative
+        
+        # Keep subnarratives that appear in majority of agents (> 50%)
+        majority_threshold = num_agents / 2
+        
+        result = []
+        for name, count in subnarrative_counts.items():
+            if count > majority_threshold:
                 result.append(subnarrative_objects[name])
         return result
         
