@@ -57,7 +57,8 @@ class ConfigurableGraphBuilder:
         print(f"  Subnarrative Validation: {config.is_subnarrative_validation_enabled()}")
         print(f"  Label Cleaning: {config.enable_cleaning}")
         print(f"  Text Cleaning: {config.enable_text_cleaning}")
-        print(f"  Multi-agent: {config.num_agents} agents with {config.aggregation_method} aggregation")
+        print(f"  Multi-agent narratives: {config.num_narrative_agents} agents with {config.narrative_aggregation_method} aggregation")
+        print(f"  Multi-agent subnarratives: {config.num_subnarrative_agents} agents with {config.subnarrative_aggregation_method} aggregation")
         self._print_model_assignments()
     
     def _initialize_llms(self, config: ClassificationConfig) -> Dict[str, Any]:
@@ -174,13 +175,13 @@ class ConfigurableGraphBuilder:
     def _create_narrative_aggregation_node(self):
         """Create narrative aggregation node wrapper for multi-agent results."""
         def _aggregate_multi_agent_narratives(state: ClassificationState) -> dict:
-            return aggregate_multi_agent_narratives(state, self.config.aggregation_method)
+            return aggregate_multi_agent_narratives(state, self.config.narrative_aggregation_method)
         return _aggregate_multi_agent_narratives
     
     def _create_subnarrative_aggregation_node(self):
         """Create subnarrative aggregation node wrapper for multi-agent results."""
         def _aggregate_multi_agent_subnarratives(state: ClassificationState) -> dict:
-            return aggregate_multi_agent_subnarratives(state, self.config.aggregation_method)
+            return aggregate_multi_agent_subnarratives(state, self.config.subnarrative_aggregation_method)
         return _aggregate_multi_agent_subnarratives
     
     def _create_results_node(self):
@@ -381,7 +382,8 @@ class ConfigurableGraphBuilder:
         print(f"  - Cleaning enabled: {cleaning}")
         print(f"  - Multi-agent narratives: {self.config.num_narrative_agents} agents")
         print(f"  - Multi-agent subnarratives: {self.config.num_subnarrative_agents} agents")
-        print(f"  - Aggregation method: {self.config.aggregation_method}")
+        print(f"  - Narrative aggregation method: {self.config.narrative_aggregation_method}")
+        print(f"  - Subnarrative aggregation method: {self.config.subnarrative_aggregation_method}")
     
     def get_execution_config(self) -> dict:
         """Get execution configuration for the graph."""

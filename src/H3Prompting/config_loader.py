@@ -32,7 +32,9 @@ class ClassificationConfig:
     num_agents: int = 1  # DEPRECATED: Use num_narrative_agents and num_subnarrative_agents instead
     num_narrative_agents: int = 1  # Number of agents for narrative classification
     num_subnarrative_agents: int = 1  # Number of agents for subnarrative classification
-    aggregation_method: str = "union"  # "union" or "intersection"
+    aggregation_method: str = "union"  # DEPRECATED: Use narrative_aggregation_method and subnarrative_aggregation_method instead
+    narrative_aggregation_method: str = "union"  # "union" or "intersection" for narratives
+    subnarrative_aggregation_method: str = "union"  # "union" or "intersection" for subnarratives
     
     max_concurrency: int = 20
     
@@ -78,6 +80,11 @@ class ClassificationConfig:
         num_narrative_agents = yaml_data.get('num_narrative_agents', num_agents)
         num_subnarrative_agents = yaml_data.get('num_subnarrative_agents', 1)  # Default to 1 for subnars
         
+        # Handle backward compatibility for aggregation methods
+        aggregation_method = yaml_data.get('aggregation_method', 'union')
+        narrative_aggregation_method = yaml_data.get('narrative_aggregation_method', aggregation_method)
+        subnarrative_aggregation_method = yaml_data.get('subnarrative_aggregation_method', aggregation_method)
+        
         return cls(
             model_name=yaml_data['model_name'],
             input_folder=yaml_data['input_folder'],
@@ -88,7 +95,9 @@ class ClassificationConfig:
             num_agents=num_agents,  # Keep for backward compatibility
             num_narrative_agents=num_narrative_agents,
             num_subnarrative_agents=num_subnarrative_agents,
-            aggregation_method=yaml_data.get('aggregation_method', 'union'),
+            aggregation_method=aggregation_method,  # Keep for backward compatibility
+            narrative_aggregation_method=narrative_aggregation_method,
+            subnarrative_aggregation_method=subnarrative_aggregation_method,
             category=yaml_data.get('category'),
             narratives=yaml_data.get('narratives'),
             subnarratives=yaml_data.get('subnarratives'),

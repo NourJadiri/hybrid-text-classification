@@ -1,0 +1,27 @@
+# Russian Classification Configuration - Full Mixed Strategy
+# Narrative: Union (combines all predictions from 2 agents)
+# Subnarrative: Intersection (requires consensus from 2 agents)
+
+model_name: "openai:gpt-5-nano"
+
+# Input/Output
+input_folder: "testset/RU/subtask-2-documents/"
+output_file: "results/openai_gpt-5-nano/ru_full_mixed.txt"
+
+# Validation settings
+enable_validation: false
+enable_narrative_validation: false
+enable_subnarrative_validation: false
+
+# Cleaning settings
+enable_cleaning: true
+enable_text_cleaning: false
+
+# Multi-agent configuration with different strategies per level
+num_narrative_agents: 2
+num_subnarrative_agents: 2
+narrative_aggregation_method: "union"
+subnarrative_aggregation_method: "intersection"
+
+# Concurrency
+max_concurrency: 20

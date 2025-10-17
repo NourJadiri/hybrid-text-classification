@@ -1,0 +1,99 @@
+HI_URW_TEST_513.txt	Other	Other
+HI_URW_TEST_478.txt	Other	Other
+HI_URW_TEST_501.txt	Other	Other
+HI_CC_TEST_403.txt	Other	Other
+HI_URW_TEST_514.txt	Other	Other
+HI_URW_TEST_509.txt	Other	Other
+HI_URW_TEST_491.txt	Other	Other
+HI_URW_TEST_503.txt	Other	Other
+HI_URW_TEST_463.txt	Other	Other
+HI_URW_TEST_517.txt	Other	Other
+HI_URW_TEST_457.txt	Other	Other
+HI_URW_TEST_475.txt	Other	Other
+HI_URW_TEST_499.txt	URW: Speculating war outcomes	Other
+HI_URW_TEST_526.txt	Other	Other
+HI_URW_TEST_504.txt	Other	Other
+HI_URW_TEST_512.txt	URW: Speculating war outcomes	URW: Speculating war outcomes: Other
+HI_CC_TEST_412.txt	Other	Other
+HI_URW_TEST_505.txt	Other	Other
+HI_URW_TEST_469.txt	URW: Speculating war outcomes	URW: Speculating war outcomes: Other
+HI_URW_TEST_473.txt	Other	Other
+HI_URW_TEST_524.txt	URW: Distrust towards Media	URW: Distrust towards Media: Ukrainian media cannot be trusted
+HI_URW_TEST_518.txt	Other	Other
+HI_URW_TEST_510.txt	URW: Speculating war outcomes	URW: Speculating war outcomes: Other
+HI_URW_TEST_461.txt	URW: Speculating war outcomes	URW: Speculating war outcomes: Other
+HI_URW_TEST_528.txt	Other	Other
+HI_CC_TEST_414.txt	Other	Other
+HI_URW_TEST_493.txt	URW: Praise of Russia	Other
+HI_URW_TEST_456.txt	Other	Other
+HI_CC_TEST_402.txt	CC: Criticism of climate policies;CC: Criticism of institutions and authorities	CC: Criticism of climate policies: Other
+HI_URW_TEST_532.txt	Other	Other
+HI_URW_TEST_508.txt	Other	Other
+HI_URW_TEST_529.txt	Other	Other
+HI_URW_TEST_497.txt	Other	Other
+HI_URW_TEST_495.txt	URW: Discrediting Ukraine	URW: Discrediting Ukraine: Discrediting Ukrainian military
+HI_URW_TEST_500.txt	Other	Other
+HI_URW_TEST_483.txt	URW: Speculating war outcomes;URW: Amplifying war-related fears	URW: Speculating war outcomes: Other;URW: Amplifying war-related fears: Other
+HI_URW_TEST_520.txt	URW: Amplifying war-related fears	URW: Amplifying war-related fears: Other
+HI_URW_TEST_531.txt	URW: Praise of Russia;URW: Amplifying war-related fears;URW: Speculating war outcomes	URW: Praise of Russia: Praise of Russian military might;URW: Amplifying war-related fears: Other;URW: Speculating war outcomes: Other
+HI_CC_TEST_408.txt	CC: Criticism of climate policies;CC: Criticism of institutions and authorities;CC: Amplifying Climate Fears	CC: Criticism of climate policies: Other;CC: Criticism of institutions and authorities: Criticism of national governments;CC: Criticism of institutions and authorities: Criticism of international entities;CC: Amplifying Climate Fears: Amplifying existing fears of global warming
+HI_URW_TEST_535.txt	Other	Other
+HI_URW_TEST_468.txt	Other	Other
+HI_URW_TEST_522.txt	URW: Blaming the war on others rather than the invader;URW: Discrediting the West, Diplomacy	URW: Blaming the war on others rather than the invader: The West are the aggressors
+HI_URW_TEST_466.txt	Other	Other
+HI_CC_TEST_417.txt	CC: Criticism of climate policies	CC: Criticism of climate policies: Climate policies are ineffective
+HI_URW_TEST_488.txt	Other	Other
+HI_URW_TEST_519.txt	Other	Other
+HI_URW_TEST_480.txt	Other	Other
+HI_URW_TEST_530.txt	Other	Other
+HI_URW_TEST_486.txt	Other	Other
+HI_URW_TEST_471.txt	Other	Other
+HI_URW_TEST_521.txt	Other	Other
+HI_CC_TEST_419.txt	CC: Criticism of climate policies	CC: Criticism of climate policies: Climate policies are ineffective
+HI_URW_TEST_487.txt	URW: Amplifying war-related fears;URW: Discrediting the West, Diplomacy	URW: Amplifying war-related fears: There is a real possibility that nuclear weapons will be employed;URW: Discrediting the West, Diplomacy: Other
+HI_CC_TEST_407.txt	CC: Criticism of climate policies;CC: Criticism of institutions and authorities	CC: Criticism of institutions and authorities: Criticism of international entities;CC: Criticism of institutions and authorities: Criticism of national governments
+HI_URW_TEST_516.txt	URW: Blaming the war on others rather than the invader	URW: Blaming the war on others rather than the invader: Ukraine is the aggressor
+HI_URW_TEST_494.txt	Other	Other
+HI_CC_TEST_421.txt	CC: Criticism of institutions and authorities;CC: Criticism of climate policies	CC: Criticism of institutions and authorities: Criticism of international entities;CC: Criticism of climate policies: Other
+HI_URW_TEST_527.txt	Other	Other
+HI_URW_TEST_470.txt	URW: Discrediting Ukraine	URW: Discrediting Ukraine: Discrediting Ukrainian government and officials and policies
+HI_CC_TEST_405.txt	Other	Other
+HI_URW_TEST_533.txt	URW: Praise of Russia;URW: Speculating war outcomes;URW: Amplifying war-related fears	URW: Praise of Russia: Praise of Russian military might;URW: Speculating war outcomes: Ukrainian army is collapsing;URW: Amplifying war-related fears: Other
+HI_URW_TEST_502.txt	URW: Speculating war outcomes	Other
+HI_URW_TEST_511.txt	Other	Other
+HI_CC_TEST_416.txt	CC: Criticism of climate policies	CC: Criticism of climate policies: Climate policies have negative impact on the economy
+HI_URW_TEST_506.txt	Other	Other
+HI_URW_TEST_485.txt	URW: Speculating war outcomes	URW: Speculating war outcomes: Other
+HI_URW_TEST_484.txt	Other	Other
+HI_URW_TEST_507.txt	URW: Speculating war outcomes;URW: Amplifying war-related fears;URW: Discrediting the West, Diplomacy	URW: Speculating war outcomes: Other;URW: Amplifying war-related fears: By continuing the war we risk WWIII;URW: Amplifying war-related fears: There is a real possibility that nuclear weapons will be employed
+HI_URW_TEST_462.txt	URW: Blaming the war on others rather than the invader;URW: Russia is the Victim;URW: Speculating war outcomes;URW: Amplifying war-related fears	URW: Speculating war outcomes: Other;URW: Amplifying war-related fears: There is a real possibility that nuclear weapons will be employed
+HI_CC_TEST_411.txt	CC: Criticism of institutions and authorities	CC: Criticism of institutions and authorities: Criticism of national governments
+HI_CC_TEST_420.txt	CC: Criticism of climate policies;CC: Criticism of institutions and authorities;CC: Green policies are geopolitical instruments	CC: Criticism of climate policies: Climate policies are ineffective;CC: Criticism of climate policies: Climate policies have negative impact on the economy;CC: Criticism of institutions and authorities: Criticism of international entities;CC: Criticism of institutions and authorities: Criticism of national governments;CC: Green policies are geopolitical instruments: Climate-related international relations are abusive/exploitative
+HI_URW_TEST_492.txt	Other	Other
+HI_URW_TEST_459.txt	URW: Speculating war outcomes	URW: Speculating war outcomes: Other
+HI_CC_TEST_404.txt	CC: Criticism of climate policies;CC: Criticism of institutions and authorities	CC: Criticism of climate policies: Other
+HI_URW_TEST_482.txt	URW: Amplifying war-related fears	URW: Amplifying war-related fears: Other
+HI_URW_TEST_481.txt	URW: Amplifying war-related fears	URW: Amplifying war-related fears: Other
+HI_URW_TEST_467.txt	Other	Other
+HI_URW_TEST_490.txt	URW: Speculating war outcomes	URW: Speculating war outcomes: Other
+HI_URW_TEST_525.txt	URW: Praise of Russia	URW: Praise of Russia: Praise of Russian military might;URW: Praise of Russia: Praise of Russian President Vladimir Putin
+HI_URW_TEST_476.txt	URW: Blaming the war on others rather than the invader;URW: Speculating war outcomes;URW: Discrediting the West, Diplomacy	URW: Blaming the war on others rather than the invader: The West are the aggressors;URW: Speculating war outcomes: Other
+HI_URW_TEST_489.txt	Other	Other
+HI_URW_TEST_534.txt	URW: Negative Consequences for the West;URW: Speculating war outcomes;URW: Discrediting the West, Diplomacy	URW: Negative Consequences for the West: Other;URW: Discrediting the West, Diplomacy: Diplomacy does/will not work
+HI_CC_TEST_409.txt	Other	Other
+HI_CC_TEST_406.txt	CC: Criticism of institutions and authorities	Other
+HI_URW_TEST_472.txt	Other	Other
+HI_CC_TEST_413.txt	CC: Criticism of institutions and authorities	CC: Criticism of institutions and authorities: Criticism of national governments;CC: Criticism of institutions and authorities: Criticism of political organizations and figures
+HI_URW_TEST_515.txt	URW: Russia is the Victim;URW: Amplifying war-related fears	URW: Russia is the Victim: Other;URW: Amplifying war-related fears: Other
+HI_URW_TEST_479.txt	URW: Amplifying war-related fears	URW: Amplifying war-related fears: Other
+HI_URW_TEST_477.txt	Other	Other
+HI_CC_TEST_410.txt	CC: Criticism of climate policies;CC: Criticism of institutions and authorities	CC: Criticism of climate policies: Climate policies are ineffective;CC: Criticism of institutions and authorities: Criticism of international entities
+HI_URW_TEST_464.txt	Other	Other
+HI_URW_TEST_496.txt	URW: Distrust towards Media	URW: Distrust towards Media: Other
+HI_URW_TEST_498.txt	Other	Other
+HI_CC_TEST_415.txt	Other	Other
+HI_URW_TEST_474.txt	Other	Other
+HI_URW_TEST_458.txt	URW: Amplifying war-related fears	URW: Amplifying war-related fears: There is a real possibility that nuclear weapons will be employed
+HI_URW_TEST_523.txt	URW: Blaming the war on others rather than the invader;URW: Discrediting Ukraine;URW: Distrust towards Media	URW: Blaming the war on others rather than the invader: Ukraine is the aggressor;URW: Blaming the war on others rather than the invader: The West are the aggressors;URW: Discrediting Ukraine: Ukraine is a puppet of the West;URW: Distrust towards Media: Other
+HI_CC_TEST_418.txt	CC: Criticism of climate policies;CC: Criticism of institutions and authorities	CC: Criticism of climate policies: Climate policies have negative impact on the economy;CC: Criticism of climate policies: Other;CC: Criticism of institutions and authorities: Criticism of national governments;CC: Criticism of institutions and authorities: Criticism of international entities
+HI_URW_TEST_460.txt	URW: Russia is the Victim;URW: Praise of Russia;URW: Speculating war outcomes;URW: Discrediting Ukraine	URW: Russia is the Victim: Other;URW: Praise of Russia: Russia is a guarantor of peace and prosperity;URW: Speculating war outcomes: Other
