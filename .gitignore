@@ -4,6 +4,8 @@ devset/**
 testset/
 models/
 
+*.zip
+
 **/__pycache__/
 
 .env*
